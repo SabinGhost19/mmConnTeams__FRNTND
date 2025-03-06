@@ -1,6 +1,167 @@
-import React from "react";
+"use client";
+import Link from "next/link";
+import React, { useEffect, useState } from "react";
+import { ROLE } from "../types/models_types/roles";
+import { RegisterUserData } from "../types/register";
+import { useRegister } from "../hooks/useRegister";
+import Image from "next/image";
 
 const registerPage = () => {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState<ROLE>(ROLE.STUDENT);
+  const [institution, setInstitution] = useState("");
+  const [studyLevel, setStudyLevel] = useState("");
+  const [specialization, setSpecialization] = useState("");
+  const [year, setYear] = useState<number | undefined>(undefined);
+  const [group, setGroup] = useState("");
+  const [bio, setBio] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [profileImage, setProfileImage] = useState<File | undefined>(undefined);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [pushNotifications, setPushNotifications] = useState(false);
+  const [desktopNotifications, setDesktopNotifications] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyPolicyAccepted, setPrivacyPolicyAccepted] = useState(false);
+  const [step, setStep] = useState(1);
+
+  useEffect(() => {
+    console.log(`Current step: ${step}`);
+  }, [step]);
+
+  // State pentru pași și erori
+  const registerMutation = useRegister();
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof RegisterUserData, string>>
+  >({});
+  const validateStep = (currentStep: number): boolean => {
+    const newErrors: Partial<Record<keyof RegisterUserData, string>> = {};
+    let isValid = true;
+
+    if (currentStep === 1) {
+      if (!firstName.trim()) {
+        newErrors.firstName = "Prenumele este obligatoriu";
+        isValid = false;
+      }
+
+      if (!lastName.trim()) {
+        newErrors.lastName = "Numele este obligatoriu";
+        isValid = false;
+      }
+
+      if (!email.trim()) {
+        newErrors.email = "Email-ul este obligatoriu";
+        isValid = false;
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        newErrors.email = "Adresa de email nu este validă";
+        isValid = false;
+      }
+
+      if (!password) {
+        newErrors.password = "Parola este obligatorie";
+        isValid = false;
+      } else if (password.length < 8) {
+        newErrors.password = "Parola trebuie să aibă cel puțin 8 caractere";
+        isValid = false;
+      }
+
+      if (!confirmPassword) {
+        newErrors.confirmPassword = "Confirmarea parolei este obligatorie";
+        isValid = false;
+      } else if (password !== confirmPassword) {
+        newErrors.confirmPassword = "Parolele nu coincid";
+        isValid = false;
+      }
+    } else if (currentStep === 2) {
+      if (!institution.trim()) {
+        newErrors.institution = "Instituția este obligatorie";
+        isValid = false;
+      }
+    } else if (currentStep === 3) {
+      if (!termsAccepted) {
+        newErrors.termsAccepted = "Trebuie să accepți termenii și condițiile";
+        isValid = false;
+      }
+
+      if (!privacyPolicyAccepted) {
+        newErrors.privacyPolicyAccepted =
+          "Trebuie să accepți politica de confidențialitate";
+        isValid = false;
+      }
+    }
+
+    setErrors(newErrors);
+
+    return isValid;
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setProfileImage(file);
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleNext = () => {
+    if (validateStep(step)) {
+      setStep(step + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    setStep(step - 1);
+  };
+
+  // Trimiterea formularului
+  const handleSubmit = () => {
+    //setError("");
+
+    if (!validateStep(step)) {
+      return;
+    }
+
+    const userData: RegisterUserData = {
+      firstName,
+      lastName,
+      email,
+      password,
+      confirmPassword,
+      role,
+      institution,
+      studyLevel: studyLevel || undefined,
+      specialization: specialization || undefined,
+      year: year,
+      group: group || undefined,
+      bio: bio || undefined,
+      profileImage,
+      phoneNumber: phoneNumber || undefined,
+      notificationPreferences: {
+        email: emailNotifications,
+        push: pushNotifications,
+        desktop: desktopNotifications,
+      },
+      termsAccepted,
+      privacyPolicyAccepted,
+    };
+
+    registerMutation.mutate(userData, {
+      onError: (error) => {
+        // Handle errors locally in your component
+        //setError(error.message || "Registration failed");
+      },
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -52,7 +213,14 @@ const registerPage = () => {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (step === 3) {
+                handleSubmit();
+              }
+            }}
+          >
             {/* Pasul 1: Informații de bază */}
             {step === 1 && (
               <div className="space-y-6">
@@ -68,8 +236,8 @@ const registerPage = () => {
                       id="firstName"
                       name="firstName"
                       type="text"
-                      value={formData.firstName}
-                      onChange={handleChange}
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                     {errors.firstName && (
@@ -89,8 +257,8 @@ const registerPage = () => {
                       id="lastName"
                       name="lastName"
                       type="text"
-                      value={formData.lastName}
-                      onChange={handleChange}
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                     {errors.lastName && (
@@ -112,8 +280,8 @@ const registerPage = () => {
                     id="email"
                     name="email"
                     type="email"
-                    value={formData.email}
-                    onChange={handleChange}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                   {errors.email && (
@@ -132,8 +300,8 @@ const registerPage = () => {
                     id="password"
                     name="password"
                     type="password"
-                    value={formData.password}
-                    onChange={handleChange}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                   {errors.password && (
@@ -154,8 +322,8 @@ const registerPage = () => {
                     id="confirmPassword"
                     name="confirmPassword"
                     type="password"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                   {errors.confirmPassword && (
@@ -175,8 +343,8 @@ const registerPage = () => {
                   <select
                     id="role"
                     name="role"
-                    value={formData.role}
-                    onChange={handleChange}
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as ROLE)}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value={ROLE.STUDENT}>Student</option>
@@ -200,8 +368,8 @@ const registerPage = () => {
                     id="institution"
                     name="institution"
                     type="text"
-                    value={formData.institution}
-                    onChange={handleChange}
+                    value={institution}
+                    onChange={(e) => setInstitution(e.target.value)}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                   {errors.institution && (
@@ -222,8 +390,8 @@ const registerPage = () => {
                     <select
                       id="studyLevel"
                       name="studyLevel"
-                      value={formData.studyLevel || ""}
-                      onChange={handleChange}
+                      value={studyLevel || ""}
+                      onChange={(e) => setStudyLevel(e.target.value)}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="">Selectează</option>
@@ -244,8 +412,8 @@ const registerPage = () => {
                       id="specialization"
                       name="specialization"
                       type="text"
-                      value={formData.specialization || ""}
-                      onChange={handleChange}
+                      value={specialization || ""}
+                      onChange={(e) => setSpecialization(e.target.value)}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -265,8 +433,12 @@ const registerPage = () => {
                       type="number"
                       min="1"
                       max="6"
-                      value={formData.year || ""}
-                      onChange={handleChange}
+                      value={year || ""}
+                      onChange={(e) =>
+                        setYear(
+                          e.target.value ? Number(e.target.value) : undefined
+                        )
+                      }
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -281,8 +453,8 @@ const registerPage = () => {
                       id="group"
                       name="group"
                       type="text"
-                      value={formData.group || ""}
-                      onChange={handleChange}
+                      value={group || ""}
+                      onChange={(e) => setGroup(e.target.value)}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -299,8 +471,8 @@ const registerPage = () => {
                     id="phoneNumber"
                     name="phoneNumber"
                     type="tel"
-                    value={formData.phoneNumber || ""}
-                    onChange={handleChange}
+                    value={phoneNumber || ""}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -316,8 +488,8 @@ const registerPage = () => {
                     id="bio"
                     name="bio"
                     rows={3}
-                    value={formData.bio || ""}
-                    onChange={handleChange}
+                    value={bio || ""}
+                    onChange={(e) => setBio(e.target.value)}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Spune-ne câteva cuvinte despre tine..."
                   />
@@ -333,17 +505,14 @@ const registerPage = () => {
                         <Image
                           src={imagePreview}
                           alt="Preview"
-                          layout="fill"
-                          objectFit="cover"
+                          fill
+                          style={{ objectFit: "cover" }}
                         />
                         <button
                           type="button"
                           onClick={() => {
                             setImagePreview(null);
-                            setFormData({
-                              ...formData,
-                              profileImage: undefined,
-                            });
+                            setProfileImage(undefined);
                           }}
                           className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
                         >
@@ -397,8 +566,10 @@ const registerPage = () => {
                           id="notificationPreferences.email"
                           name="notificationPreferences.email"
                           type="checkbox"
-                          checked={formData.notificationPreferences?.email}
-                          onChange={handleChange}
+                          checked={emailNotifications}
+                          onChange={(e) => {
+                            setEmailNotifications(e.target.checked);
+                          }}
                           className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
                         />
                       </div>
@@ -420,8 +591,10 @@ const registerPage = () => {
                           id="notificationPreferences.push"
                           name="notificationPreferences.push"
                           type="checkbox"
-                          checked={formData.notificationPreferences?.push}
-                          onChange={handleChange}
+                          checked={pushNotifications}
+                          onChange={(e) => {
+                            setPushNotifications(e.target.checked);
+                          }}
                           className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
                         />
                       </div>
@@ -443,8 +616,10 @@ const registerPage = () => {
                           id="notificationPreferences.desktop"
                           name="notificationPreferences.desktop"
                           type="checkbox"
-                          checked={formData.notificationPreferences?.desktop}
-                          onChange={handleChange}
+                          checked={desktopNotifications}
+                          onChange={(e) =>
+                            setDesktopNotifications(e.target.checked)
+                          }
                           className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
                         />
                       </div>
@@ -470,8 +645,8 @@ const registerPage = () => {
                         id="termsAccepted"
                         name="termsAccepted"
                         type="checkbox"
-                        checked={formData.termsAccepted}
-                        onChange={handleChange}
+                        checked={termsAccepted}
+                        onChange={(e) => setTermsAccepted(e.target.checked)}
                         className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
                       />
                     </div>
@@ -506,8 +681,10 @@ const registerPage = () => {
                         id="privacyPolicyAccepted"
                         name="privacyPolicyAccepted"
                         type="checkbox"
-                        checked={formData.privacyPolicyAccepted}
-                        onChange={handleChange}
+                        checked={privacyPolicyAccepted}
+                        onChange={(e) =>
+                          setPrivacyPolicyAccepted(e.target.checked)
+                        }
                         className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
                       />
                     </div>
@@ -544,7 +721,7 @@ const registerPage = () => {
               {step > 1 && (
                 <button
                   type="button"
-                  onClick={goToPreviousStep}
+                  onClick={handlePrevious}
                   className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Înapoi
@@ -554,7 +731,7 @@ const registerPage = () => {
               {step < 3 ? (
                 <button
                   type="button"
-                  onClick={goToNextStep}
+                  onClick={handleNext}
                   className={`${
                     step > 1 ? "ml-3" : ""
                   } inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
