@@ -11,7 +11,7 @@ export const useRegister = () => {
   return useMutation<RegisterResponse, Error, RegisterUserData>({
     mutationFn: (credentials) => registerUser(credentials),
     onSuccess: (data) => {
-      console.log(data.user);
+      console.log(data);
       router.push("/login");
     },
   });

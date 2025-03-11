@@ -143,7 +143,7 @@ const registerPage = () => {
       year: year,
       group: group || undefined,
       bio: bio || undefined,
-      profileImage,
+      profileImage: profileImage || undefined,
       phoneNumber: phoneNumber || undefined,
       notificationPreferences: {
         email: emailNotifications,

@@ -44,16 +44,31 @@ export const registerUser = async (
 ): Promise<RegisterResponse> => {
   const formData = new FormData();
 
-  Object.entries(credentials).forEach(([key, value]) => {
-    if (key === "profileImage" && value) {
-      formData.append(key, value);
-    } else if (key === "notificationPreferences") {
-      formData.append(key, JSON.stringify(value));
-    } else if (value !== undefined) {
-      formData.append(key, String(value));
-    }
+  const { profileImage, notificationPreferences, ...userDataFields } =
+    credentials;
+
+  const userDataJson = JSON.stringify({
+    ...userDataFields,
+    notificationPreferences: notificationPreferences
+      ? JSON.stringify(notificationPreferences)
+      : undefined,
   });
-  const response = await api.post<RegisterResponse>("/register", formData);
+
+  formData.append(
+    "userData",
+    new Blob([userDataJson], { type: "application/json" }),
+    "userData.json"
+  );
+
+  if (profileImage) {
+    formData.append("profileImage", profileImage);
+  }
+
+  const response = await api.post<RegisterResponse>("/register", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 
   return response.data;
 };
