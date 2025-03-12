@@ -11,11 +11,15 @@ export interface LoginResponse {
     name: string;
     email: string;
   };
+  token: string;
 }
 
 export const loginUser = async (
   credentials: LoginCredentials
 ): Promise<LoginResponse> => {
-  const response = await api.post<LoginResponse>("/auth/login", credentials);
+  const response = await api.post<LoginResponse>(
+    "/api/auth/login",
+    credentials
+  );
   return response.data;
 };
