@@ -2,16 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-  }
+html,
+body {
+  background-color: white !important;
+  background: white !important;
+  color-scheme: light;
+  -webkit-color-scheme: light;
+  min-height: 100vh;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
+  @apply bg-white;
+  color: black;
 }

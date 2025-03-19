@@ -2,10 +2,27 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main>
-      <h1 className="text-red-500">Salut Hello</h1>
-      <div className="text-green-600">Numele este</div>
-      <Link href={"/users"}>Click here for Users</Link>
-    </main>
+    <div className="min-h-screen bg-white">
+      <div className="container mx-auto px-4 py-8 bg-white">
+        <h1
+          className="text-red-500 text-3xl font-bold bg-white"
+          style={{
+            backgroundColor: "white",
+            background: "white",
+          }}
+        >
+          Diagnostic Page
+        </h1>
+        <div
+          className="text-green-600 text-xl bg-white"
+          style={{
+            backgroundColor: "white",
+            background: "white",
+          }}
+        >
+          Check Background Color
+        </div>
+      </div>
+    </div>
   );
 }

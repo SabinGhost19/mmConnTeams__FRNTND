@@ -26,7 +26,6 @@ const loginPage = () => {
         },
       }
     );
-    router.push("/users");
   };
 
   return (

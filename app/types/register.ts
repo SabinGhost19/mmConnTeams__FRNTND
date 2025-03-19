@@ -36,6 +36,7 @@ export interface RegisterResponse {
     email: string;
     role: ROLE;
   };
+ 
 }
 
 export const registerUser = async (
