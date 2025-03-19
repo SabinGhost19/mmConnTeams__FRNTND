@@ -7,3 +7,13 @@ export interface User {
   password: string;
   role: ROLE;
 }
+
+export interface UserTeam {
+  id: number;
+  name: string;
+  email: string;
+  avatar: string;
+  status: "online" | "offline" | "busy" | "away";
+  role: string;
+  department: string;
+}

@@ -171,7 +171,7 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
                   message.sender.name
                 )}&background=0D8ABC&color=fff`
               }
-              alt={message.sender.name}
+              alt={message.sender.name?.toString() || ""}
               className="w-10 h-10 rounded-full"
             />
             <span
@@ -236,58 +236,8 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
                   id: React.Key | null | undefined;
                   type: string;
                   url: string | undefined;
-                  name:
-                    | string
-                    | number
-                    | bigint
-                    | boolean
-                    | React.ReactElement<
-                        unknown,
-                        string | React.JSXElementConstructor<any>
-                      >
-                    | Iterable<React.ReactNode>
-                    | Promise<
-                        | string
-                        | number
-                        | bigint
-                        | boolean
-                        | React.ReactPortal
-                        | React.ReactElement<
-                            unknown,
-                            string | React.JSXElementConstructor<any>
-                          >
-                        | Iterable<React.ReactNode>
-                        | null
-                        | undefined
-                      >
-                    | null
-                    | undefined;
-                  size:
-                    | string
-                    | number
-                    | bigint
-                    | boolean
-                    | React.ReactElement<
-                        unknown,
-                        string | React.JSXElementConstructor<any>
-                      >
-                    | Iterable<React.ReactNode>
-                    | Promise<
-                        | string
-                        | number
-                        | bigint
-                        | boolean
-                        | React.ReactPortal
-                        | React.ReactElement<
-                            unknown,
-                            string | React.JSXElementConstructor<any>
-                          >
-                        | Iterable<React.ReactNode>
-                        | null
-                        | undefined
-                      >
-                    | null
-                    | undefined;
+                  name: any;
+                  size: any;
                 }) => (
                   <div
                     key={attachment.id}
@@ -382,60 +332,9 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
               {message.reactions.map(
                 (
                   reaction: {
-                    emoji:
-                      | string
-                      | number
-                      | bigint
-                      | boolean
-                      | React.ReactElement<
-                          unknown,
-                          string | React.JSXElementConstructor<any>
-                        >
-                      | Iterable<React.ReactNode>
-                      | Promise<
-                          | string
-                          | number
-                          | bigint
-                          | boolean
-                          | React.ReactPortal
-                          | React.ReactElement<
-                              unknown,
-                              string | React.JSXElementConstructor<any>
-                            >
-                          | Iterable<React.ReactNode>
-                          | null
-                          | undefined
-                        >
-                      | null
-                      | undefined;
+                    emoji: any;
                     users: string | any[];
-                    count:
-                      | string
-                      | number
-                      | bigint
-                      | boolean
-                      | React.ReactElement<
-                          unknown,
-                          string | React.JSXElementConstructor<any>
-                        >
-                      | Iterable<React.ReactNode>
-                      | React.ReactPortal
-                      | Promise<
-                          | string
-                          | number
-                          | bigint
-                          | boolean
-                          | React.ReactPortal
-                          | React.ReactElement<
-                              unknown,
-                              string | React.JSXElementConstructor<any>
-                            >
-                          | Iterable<React.ReactNode>
-                          | null
-                          | undefined
-                        >
-                      | null
-                      | undefined;
+                    count: any;
                   },
                   index: React.Key | null | undefined
                 ) => (
@@ -468,7 +367,7 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
           )}
         </div>
 
-        {/* Reaction Button (appears on hover) */}
+        {/* Reaction Button (appears on hover) - DOAR O SINGURĂ IMPLEMENTARE */}
         <div
           className={`flex mt-1 ${
             isCurrentUserMessage ? "justify-end" : "justify-start"
@@ -495,16 +394,23 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
               </svg>
             </button>
 
-            {/* Reaction Picker */}
+            {/* Reaction Picker - Ajustat pentru a evita redimensionarea */}
             {showReactionPicker && (
-              <div className="absolute bottom-full mb-2 bg-white rounded-full shadow-lg border border-gray-200 px-2 py-1 z-10">
+              <div
+                className={`absolute bottom-full mb-2 bg-white rounded-full shadow-lg border border-gray-200 px-2 py-1 z-10 ${
+                  isCurrentUserMessage ? "right-0" : "left-0"
+                }`}
+                style={{ maxWidth: "280px", overflowX: "auto" }}
+              >
                 <div className="flex space-x-1">
                   {commonEmojis.map((emoji) => (
                     <button
                       key={emoji}
                       onClick={() => {
-                        onReaction(message.id, emoji);
-                        setShowReactionPicker(false);
+                        if (typeof message.id === "string") {
+                          onReaction(message.id, emoji);
+                          setShowReactionPicker(false);
+                        }
                       }}
                       className="w-8 h-8 flex items-center justify-center text-xl hover:bg-gray-100 rounded-full"
                     >

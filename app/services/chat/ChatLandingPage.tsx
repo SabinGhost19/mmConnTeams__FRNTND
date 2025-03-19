@@ -78,7 +78,7 @@ const mockUsers = [
 ];
 
 // Mock data for messages
-const generateMockMessages = (channelId) => {
+const generateMockMessages = (channelId: number) => {
   const baseMessages = [
     {
       id: `${channelId}-1`,
@@ -177,18 +177,22 @@ const TeamsChat: React.FC = () => {
     setMessages(generateMockMessages(selectedChannel.id));
   }, [selectedChannel]);
 
-  const handleTeamSelect = (teamId) => {
+  const handleTeamSelect = (teamId: number) => {
     const team = teams.find((t) => t.id === teamId);
-    setSelectedTeam(team);
-    setSelectedChannel(team.channels[0]);
+    if (team) {
+      setSelectedTeam(team);
+      setSelectedChannel(team.channels[0]);
+    }
   };
 
-  const handleChannelSelect = (channelId) => {
+  const handleChannelSelect = (channelId: number) => {
     const channel = selectedTeam.channels.find((c) => c.id === channelId);
-    setSelectedChannel(channel);
+    if (channel) {
+      setSelectedChannel(channel);
+    }
   };
 
-  const handleSendMessage = (content, attachments = []) => {
+  const handleSendMessage = (content: any, attachments: any[] = []) => {
     const newMessage = {
       id: `${selectedChannel.id}-${Date.now()}`,
       sender: users[0], // Current user
@@ -218,7 +222,7 @@ const TeamsChat: React.FC = () => {
     setTeams(updatedTeams);
   };
 
-  const handleReaction = (messageId, emoji) => {
+  const handleReaction = (messageId: string, emoji: string) => {
     const updatedMessages = messages.map((message) => {
       if (message.id === messageId) {
         const existingReactionIndex = message.reactions.findIndex(
@@ -271,66 +275,70 @@ const TeamsChat: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-white">
-      {/* Mobile hamburger menu */}
-      <div className="md:hidden absolute left-4 top-4 z-10">
-        <button
-          onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-          className="text-gray-600 hover:text-gray-900 focus:outline-none"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+    <>
+      <div className="flex h-screen bg-white">
+        {/* Mobile hamburger menu */}
+        <div className="md:hidden absolute left-4 top-4 z-10">
+          <button
+            onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+            className="text-gray-600 hover:text-gray-900 focus:outline-none"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          </svg>
-        </button>
-      </div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            </svg>
+          </button>
+        </div>
 
-      {/* Sidebar */}
-      <div
-        className={`${
-          isMobileSidebarOpen ? "block" : "hidden"
-        } md:block md:w-64 bg-gray-100 border-r border-gray-200`}
-      >
-        <TeamsSidebar
-          teams={teams}
-          selectedTeam={selectedTeam}
-          selectedChannel={selectedChannel}
-          onTeamSelect={handleTeamSelect}
-          onChannelSelect={handleChannelSelect}
-          onCloseMobileSidebar={() => setIsMobileSidebarOpen(false)}
-        />
-      </div>
+        {/* Sidebar */}
+        <div
+          className={`${
+            isMobileSidebarOpen ? "block" : "hidden"
+          } md:block md:w-64 bg-gray-100 border-r border-gray-200`}
+        >
+          <TeamsSidebar
+            teams={teams}
+            selectedTeam={selectedTeam}
+            selectedChannel={selectedChannel}
+            onTeamSelect={handleTeamSelect}
+            onChannelSelect={handleChannelSelect}
+            onCloseMobileSidebar={() => setIsMobileSidebarOpen(false)}
+          />
+        </div>
 
-      {/* Main Content */}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <ChannelHeader
-          team={selectedTeam}
-          channel={selectedChannel}
-          onlineUsers={users.filter((user) => user.status === "online").length}
-          totalUsers={users.length}
-        />
+        {/* Main Content */}
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <ChannelHeader
+            team={selectedTeam}
+            channel={selectedChannel}
+            onlineUsers={
+              users.filter((user) => user.status === "online").length
+            }
+            totalUsers={users.length}
+          />
 
-        <ChatArea
-          messages={messages}
-          currentUser={users[0]}
-          users={users}
-          onSendMessage={handleSendMessage}
-          onReaction={handleReaction}
-          teamName={selectedTeam.name}
-          channelName={selectedChannel.name}
-        />
+          <ChatArea
+            messages={messages}
+            currentUser={users[0]}
+            users={users}
+            onSendMessage={handleSendMessage}
+            onReaction={handleReaction}
+            teamName={selectedTeam.name}
+            channelName={selectedChannel.name}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

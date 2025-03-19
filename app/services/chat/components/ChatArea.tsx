@@ -1,4 +1,3 @@
-// components/TeamsChat/ChatArea.tsx
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import MessageComponent from "./MessageComponent";
@@ -45,10 +44,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    if (isAtBottom) {
-      scrollToBottom();
-    }
-  }, [messages]);
+    scrollToBottom();
+  }, [messages.length]);
 
   // Keep track if user is scrolled to bottom
   useEffect(() => {
@@ -140,7 +137,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
   // Scroll chat to bottom
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
   };
 
   // Send message with attachments
@@ -186,18 +185,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               </div>
               <div className="border-t border-gray-200 flex-grow"></div>
             </div>
-            {/* {msgs.map((message: Message, index: number) => (
-              <MessageComponent
-                key={message.id}
-                message={message}
-                currentUser={currentUser}
-                isCurrentUserMessage={message.sender.id === currentUser.id}
-                showAvatar={
-                  index === 0 || msgs[index - 1].sender.id !== message.sender.id
-                }
-                onReaction={onReaction}
-              />
-            ))} */}
             {(msgs as Message[]).map((message, index) => (
               <MessageComponent
                 key={message.id}
