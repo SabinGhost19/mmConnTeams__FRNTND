@@ -6,42 +6,12 @@ import MembersList from "./MembersList";
 import TeamCalendar from "./TeamCalendar";
 import TeamFiles from "./TeamFiles";
 import CreateEventModal from "./CreateEventModal";
+import Channel from "@/app/types/models_types/channel";
+import { UserTeam as Member } from "@/app/types/models_types/userType";
+import Team from "@/app/types/models_types/team";
+import Event from "@/app/types/models_types/event";
+import File from "@/app/types/models_types/file";
 // Definirea interfețelor pentru toate tipurile de date
-interface Channel {
-  id: number;
-  name: string;
-  unreadCount: number;
-}
-
-interface Member {
-  id: number;
-  name: string;
-  role: string;
-  department: string;
-  status: "online" | "busy" | "away" | "offline";
-  avatar?: string;
-}
-
-interface Team {
-  id: number;
-  name: string;
-  icon: string;
-  description: string;
-  members: number[];
-  unreadCount: number;
-  channels: Channel[];
-}
-
-interface Event {
-  id: number;
-  title: string;
-  description: string;
-  date: string | Date;
-  duration: number;
-  channelId: number;
-  attendees: number[];
-  teamId: number;
-}
 
 interface NewEvent {
   title: string;
@@ -51,18 +21,6 @@ interface NewEvent {
   channelId: number;
   attendees: number[];
   teamId: number;
-}
-
-interface File {
-  id: number;
-  name: string;
-  size: number;
-  type: string;
-  uploadedBy: number;
-  uploadedAt: string | Date;
-  teamId: number;
-  channelId?: number;
-  url: string;
 }
 
 // Tipuri de vizualizare posibile

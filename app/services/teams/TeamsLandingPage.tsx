@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Head from "next/head";
 import TeamsOverview from "./components/TeamsOverview";
 import TeamsSidebar from "./components/TeamsSidebar";
@@ -7,13 +7,14 @@ import CreateChannelModal from "./components/CreateChannelModal";
 import InviteUserModal from "./components/InviteUserModal";
 import CreateTeamModal from "./components/CreateTeamModal";
 import TeamDetailView from "./components/TeamDetailView";
-// Mock data
-import { mockTeams, mockUsers, mockEvents, mockFiles } from "./teams-Mock";
+
 import { UserTeam } from "@/app/types/models_types/userType";
 import Team from "@/app/types/models_types/team";
 import Event from "@/app/types/models_types/event";
 import File from "@/app/types/models_types/file";
 import Channel from "@/app/types/models_types/channel";
+import ChannelHeader from "../chat/components/ChatHeader";
+import ChatArea from "../chat/components/ChatArea";
 
 interface TeamsLandingPageProps {
   initialTeams: Team[];
@@ -22,7 +23,6 @@ interface TeamsLandingPageProps {
   initialFiles: File[];
 }
 
-// Tipul pentru datele necesare la crearea unei echipe
 interface TeamData {
   name: string;
   icon: string;
@@ -33,9 +33,11 @@ interface TeamData {
 interface ChannelData {
   name: string;
   description: string;
+  isPrivate: boolean;
 }
 
-// Tipul pentru datele unei invitații
+//for request it contain user id and team id
+//for getting the name of the team in the db
 interface InviteData {
   email: string;
   role: string;
@@ -71,8 +73,9 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
   const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
   const [showInviteUserModal, setShowInviteUserModal] = useState(false);
 
-  // Handlers
   const handleSelectTeam = (teamId: number) => {
+    //request -------------------------
+    //cel mai important
     const team = teams.find((t: Team) => t.id === teamId);
     if (team) {
       setSelectedTeam(team);
@@ -86,7 +89,9 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
 
   const handleSelectChannel = (channelId: number) => {
     if (!selectedTeam) return;
-
+    //request -------------------------
+    //depinde daca facem sus cum trebuie si luam
+    //si channels
     const channel = selectedTeam.channels.find(
       (c: Channel) => c.id === channelId
     );
@@ -97,18 +102,15 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
   };
 
   const handleStartChat = (userId: number) => {
-    // În loc să navigăm către o pagină nouă, setăm selectedUserId și schimbăm view-ul
     setSelectedUserId(userId);
     setCurrentView(ViewType.CHAT);
   };
 
   const handleJoinChannel = (teamId: number, channelId: number) => {
-    // Întâi selectăm echipa
     const team = teams.find((t: Team) => t.id === teamId);
     if (team) {
       setSelectedTeam(team);
 
-      // Apoi selectăm canalul din echipa respectivă
       const channel = team.channels.find((c: Channel) => c.id === channelId);
       if (channel) {
         setSelectedChannel(channel);
@@ -118,14 +120,15 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
   };
 
   const handleCreateTeam = (teamData: TeamData) => {
+    //!!!!!!!!!!!!!!!get the user id and put it in the Team constructor
     const newTeam: Team = {
       id: Date.now(),
       ...teamData,
-      members: [1], // presupunem că utilizatorul curent are ID-ul 1
+      members: [1],
       unreadCount: 0,
       channels: [{ id: Date.now() + 1, name: "General", unreadCount: 0 }],
     };
-
+    ////request -------------------------POST ..add TEAM
     setTeams([...teams, newTeam]);
     setShowCreateTeamModal(false);
 
@@ -138,13 +141,14 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
   const handleCreateChannel = (channelData: ChannelData) => {
     if (!selectedTeam) return;
 
+    //UI FIRST ...and if failed...DISABLE
     const newChannel: Channel = {
       id: Date.now(),
       ...channelData,
       unreadCount: 0,
     };
 
-    // Actualizează team-ul selectat cu noul canal
+    ////request -------------------------POST ..add CHANNEL
     const updatedTeams = teams.map((team: Team) => {
       if (team.id === selectedTeam.id) {
         return {
@@ -174,12 +178,11 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
   };
 
   const handleInviteUser = (inviteData: InviteData) => {
-    // În implementarea reală, aici ai trimite invitația la backend
+    ////request -------------------------POST ..send Invite
     console.log("Invitație trimisă la:", inviteData.email);
     setShowInviteUserModal(false);
   };
 
-  // Funcție pentru a naviga înapoi la overview
   const handleBackToOverview = () => {
     setSelectedTeam(null);
     setSelectedChannel(null);
@@ -187,7 +190,84 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
     setCurrentView(ViewType.OVERVIEW);
   };
 
-  // Render funcție pentru conținutul principal bazat pe currentView
+  const [messages, setMessages] = useState<any[]>([]);
+
+  const generateMockMessages = (channelId: number) => {
+    return [
+      {
+        id: `${channelId}-1`,
+        sender: users[0],
+        content: "Bună tuturor! Acesta este primul mesaj în acest canal.",
+        timestamp: new Date(Date.now() - 3600000).toISOString(),
+        attachments: [],
+        reactions: [],
+        isRead: true,
+      },
+      {
+        id: `${channelId}-2`,
+        sender: users[1],
+        content: "Salut! Mă bucur să fim cu toții aici.",
+        timestamp: new Date(Date.now() - 1800000).toISOString(),
+        attachments: [],
+        reactions: [],
+        isRead: true,
+      },
+    ];
+  };
+
+  useEffect(() => {
+    ////request -------------------------GET ..all messages
+    if (selectedChannel) {
+      setMessages(generateMockMessages(selectedChannel.id));
+    }
+  }, [selectedChannel]);
+
+  const handleSendMessage = (content: string, attachments: any[] = []) => {
+    if (!selectedChannel) return;
+
+    const newMessage = {
+      id: `${selectedChannel.id}-${Date.now()}`,
+      sender: users[0],
+      content,
+      timestamp: new Date().toISOString(),
+      attachments,
+      reactions: [],
+      isRead: true,
+    };
+    ////request -------------------------POST ..send new MESSAGE
+    setMessages([...messages, newMessage]);
+  };
+
+  const handleReaction = (messageId: string, emoji: string) => {
+    ////request -------------------------POST ..send new Emoji
+    setMessages(
+      messages.map((message) => {
+        if (message.id === messageId) {
+          const existingReactionIndex = message.reactions.findIndex(
+            (r: any) => r.emoji === emoji
+          );
+
+          if (existingReactionIndex > -1) {
+            // Toggle reaction
+            // (logica similară cu cea din exemplul tău)
+            return message; // Simplificat pentru exemplu
+          } else {
+            // Add new reaction
+            return {
+              ...message,
+              reactions: [
+                ...message.reactions,
+                { emoji, count: 1, users: [users[0].id] },
+              ],
+            };
+          }
+        }
+        return message;
+      })
+    );
+  };
+  //--------------------------------------------
+
   const renderMainContent = () => {
     switch (currentView) {
       case ViewType.TEAM_DETAIL:
@@ -210,26 +290,51 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
 
       case ViewType.CHANNEL:
         if (!selectedTeam || !selectedChannel) return null;
+
+        // Obține mesajele pentru canalul selectat
+        const channelMessages =
+          messages.filter(
+            (message: { channelId: number }) =>
+              message.channelId === selectedChannel.id
+          ) || [];
+
+        // Calculează numărul de utilizatori online
+
+        const onlineUsersCount = users.filter(
+          (user) => user.status === "online"
+        ).length;
         return (
-          <div className="p-4">
-            <div className="flex items-center mb-4">
+          <div className="flex flex-col h-full overflow-hidden">
+            <div className="flex items-center p-4 border-b border-gray-200">
               <button
                 onClick={() => setCurrentView(ViewType.TEAM_DETAIL)}
-                className="mr-2 text-blue-500"
+                className="mr-2 text-blue-500 hover:text-blue-700"
               >
                 ← Înapoi la echipă
               </button>
-              <h2 className="text-2xl font-bold">
+              <h2 className="text-xl font-bold">
                 {selectedTeam.name} / {selectedChannel.name}
               </h2>
             </div>
-            {/* Aici ar veni componentele pentru afișarea mesajelor din canal, etc. */}
-            <div className="bg-gray-100 p-4 rounded">
-              <p>
-                Conținutul canalului {selectedChannel.name} din echipa{" "}
-                {selectedTeam.name}
-              </p>
-              {/* Componentele pentru chat, fișiere, etc. ar veni aici */}
+
+            {/* Integrăm componenta de chat */}
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <ChannelHeader
+                team={selectedTeam}
+                channel={selectedChannel}
+                onlineUsers={onlineUsersCount}
+                totalUsers={users.length}
+              />
+
+              <ChatArea
+                messages={messages}
+                currentUser={users[0]} // Presupunem că primul membru este utilizatorul curent
+                users={users}
+                onSendMessage={handleSendMessage}
+                onReaction={handleReaction}
+                teamName={selectedTeam.name}
+                channelName={selectedChannel.name}
+              />
             </div>
           </div>
         );

@@ -6,7 +6,11 @@ import React, { useState } from "react";
 interface CreateChannelModalProps {
   teamId: number;
   onClose: () => void;
-  onSubmit: (channelData: { name: string; description: string }) => void;
+  onSubmit: (channelData: {
+    name: string;
+    description: string;
+    isPrivate: boolean;
+  }) => void;
 }
 
 const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
@@ -16,6 +20,7 @@ const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
 }) => {
   const [channelName, setChannelName] = useState("");
   const [channelDescription, setChannelDescription] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +32,7 @@ const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
     onSubmit({
       name: channelName,
       description: channelDescription,
+      isPrivate: isPrivate,
     });
   };
 
@@ -110,6 +116,8 @@ const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
                     id="privateChannel"
                     name="privateChannel"
                     type="checkbox"
+                    checked={isPrivate}
+                    onChange={() => setIsPrivate(!isPrivate)}
                     className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
                 </div>

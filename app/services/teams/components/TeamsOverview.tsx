@@ -2,43 +2,11 @@
 import React from "react";
 import UpcomingEvents from "./UpcomingEvents";
 import ActiveUsers from "./ActiveUsers";
-
+import Channel from "@/app/types/models_types/channel";
+import { UserTeam as User } from "@/app/types/models_types/userType";
+import Team from "@/app/types/models_types/team";
+import Event from "@/app/types/models_types/event";
 // Definirea interfețelor pentru toate tipurile de date
-interface Channel {
-  id: number;
-  name: string;
-  unreadCount: number;
-}
-
-interface User {
-  id: number;
-  name: string;
-  role: string;
-  department: string;
-  status: "online" | "busy" | "away" | "offline";
-  avatar?: string;
-}
-
-interface Team {
-  id: number;
-  name: string;
-  icon: string;
-  description: string;
-  members: number[];
-  unreadCount: number;
-  channels: Channel[];
-}
-
-interface Event {
-  id: number;
-  title: string;
-  description: string;
-  date: string | Date;
-  duration: number;
-  channelId: number;
-  attendees: number[];
-  teamId: number;
-}
 
 interface TeamsOverviewProps {
   teams: Team[];
