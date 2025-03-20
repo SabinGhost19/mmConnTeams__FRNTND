@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import MessageComponent from "./MessageComponent";
 import ChatInput from "./ChatInput";
+
 interface Message {
   id: string;
   sender: {

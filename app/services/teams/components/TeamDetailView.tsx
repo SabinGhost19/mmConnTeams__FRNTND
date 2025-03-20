@@ -5,7 +5,7 @@ import ChannelList from "./ChannelList";
 import MembersList from "./MembersList";
 import TeamCalendar from "./TeamCalendar";
 import TeamFiles from "./TeamFiles";
-
+import CreateEventModal from "./CreateEventModal";
 // Definirea interfețelor pentru toate tipurile de date
 interface Channel {
   id: number;
@@ -43,6 +43,16 @@ interface Event {
   teamId: number;
 }
 
+interface NewEvent {
+  title: string;
+  description: string;
+  date: string;
+  duration: number;
+  channelId: number;
+  attendees: number[];
+  teamId: number;
+}
+
 interface File {
   id: number;
   name: string;
@@ -70,6 +80,7 @@ interface TeamDetailViewProps {
   onCreateChannel: () => void;
   onInviteUser: () => void;
   onSelectChannel?: (channelId: number) => void;
+  onCreateEvent?: (event: NewEvent) => void;
 }
 
 const TeamDetailView: React.FC<TeamDetailViewProps> = ({
@@ -83,7 +94,15 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
   onJoinChannel,
   onCreateChannel,
   onInviteUser,
+  onCreateEvent,
 }) => {
+  // State pentru modalul de creare eveniment
+  const [showCreateEventModal, setShowCreateEventModal] =
+    useState<boolean>(false);
+
+  // Debugging console.log pentru a verifica starea modalului
+  console.log("Modal state:", showCreateEventModal);
+
   // Calculează statistici pentru echipă
   const teamMembers = users.filter((user) => team.members.includes(user.id));
   const onlineMembers = teamMembers.filter((user) => user.status === "online");
@@ -97,6 +116,23 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
   const sortedChannels = [...team.channels].sort(
     (a, b) => b.unreadCount - a.unreadCount
   );
+
+  // Handler pentru crearea unui eveniment nou
+  const handleCreateEvent = (newEvent: NewEvent) => {
+    if (onCreateEvent) {
+      onCreateEvent({
+        ...newEvent,
+        teamId: team.id,
+      });
+    }
+    setShowCreateEventModal(false);
+  };
+
+  // Funcție pentru a deschide modalul
+  const openCreateEventModal = () => {
+    setShowCreateEventModal(true);
+    console.log("Opening modal");
+  };
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -152,6 +188,28 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                 />
               </svg>
               Invită membri
+            </button>
+
+            {/* Buton pentru crearea unui eveniment nou */}
+            <button
+              onClick={openCreateEventModal}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded-md flex items-center"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 mr-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              Eveniment nou
             </button>
           </div>
         </div>
@@ -438,12 +496,32 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
             </div>
 
             {/* Upcoming Events Preview */}
-            {events.length > 0 && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-bold text-gray-800">
-                    Evenimente planificate
-                  </h2>
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold text-gray-800">
+                  Evenimente planificate
+                </h2>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={openCreateEventModal}
+                    className="text-sm text-yellow-600 hover:text-yellow-800 flex items-center"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 mr-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                    Adaugă
+                  </button>
                   <button
                     onClick={() => onChangeView("events" as ViewType)}
                     className="text-sm text-blue-600 hover:text-blue-800"
@@ -451,7 +529,39 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                     Vezi calendar
                   </button>
                 </div>
+              </div>
 
+              {events.filter((event) => new Date(event.date) > new Date())
+                .length === 0 ? (
+                <div className="text-center p-6 bg-gray-50 rounded-lg">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-12 w-12 text-gray-400 mx-auto mb-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <p className="text-gray-600 mb-2">
+                    Niciun eveniment planificat
+                  </p>
+                  <p className="text-gray-500 text-sm mb-4">
+                    Programează un nou eveniment pentru a începe.
+                  </p>
+                  <button
+                    onClick={openCreateEventModal}
+                    className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 text-sm"
+                  >
+                    Adaugă primul eveniment
+                  </button>
+                </div>
+              ) : (
                 <div className="space-y-4">
                   {events
                     .filter((event) => new Date(event.date) > new Date())
@@ -509,8 +619,8 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                       );
                     })}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
@@ -536,12 +646,40 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
 
         {/* Events View */}
         {selectedView === "events" && (
-          <TeamCalendar
-            teamId={team.id}
-            events={events}
-            members={teamMembers}
-            channels={team.channels}
-          />
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">
+                Calendar evenimente
+              </h2>
+              <button
+                onClick={openCreateEventModal}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded-md flex items-center"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 mr-2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+                Adaugă eveniment nou
+              </button>
+            </div>
+            <TeamCalendar
+              teamId={team.id}
+              events={events}
+              members={teamMembers}
+              channels={team.channels}
+              onCreateEvent={openCreateEventModal}
+            />
+          </div>
         )}
 
         {/* Files View */}
@@ -554,6 +692,19 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
           />
         )}
       </div>
+
+      {/* Modal pentru crearea unui eveniment - verificăm în mod explicit că onCreateEvent există */}
+      {showCreateEventModal && (
+        <div className="z-50">
+          <CreateEventModal
+            teamId={team.id}
+            channels={team.channels}
+            members={teamMembers}
+            onClose={() => setShowCreateEventModal(false)}
+            onCreateEvent={handleCreateEvent}
+          />
+        </div>
+      )}
     </div>
   );
 };

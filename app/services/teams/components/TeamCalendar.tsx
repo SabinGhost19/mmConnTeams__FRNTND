@@ -2,7 +2,22 @@
 "use client";
 import React, { useState } from "react";
 
-// Definirea interfețelor pentru tipurile de date
+// Definirea interfețelor pentru toate tipurile de date
+interface Channel {
+  id: number;
+  name: string;
+  unreadCount: number;
+}
+
+interface Member {
+  id: number;
+  name: string;
+  role?: string;
+  department?: string;
+  status: "online" | "busy" | "away" | "offline";
+  avatar?: string;
+}
+
 interface Event {
   id: number;
   title: string;
@@ -11,17 +26,7 @@ interface Event {
   duration: number;
   channelId: number;
   attendees: number[];
-}
-
-interface Member {
-  id: number;
-  name: string;
-  avatar?: string;
-}
-
-interface Channel {
-  id: number;
-  name: string;
+  teamId: number;
 }
 
 interface CalendarDay {
@@ -34,9 +39,10 @@ interface TeamCalendarProps {
   events: Event[];
   members: Member[];
   channels: Channel[];
+  onCreateEvent?: () => void;
 }
 
-// Definirea tipului pentru modul de vizualizare
+// Tipul pentru modul de vizualizare
 type ViewMode = "day" | "week" | "month";
 
 const TeamCalendar: React.FC<TeamCalendarProps> = ({
@@ -44,6 +50,7 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({
   events,
   members,
   channels,
+  onCreateEvent,
 }) => {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
@@ -197,37 +204,62 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({
             {formatMonth(currentDate)}
           </h3>
 
-          <div className="flex border rounded-md overflow-hidden">
-            <button
-              onClick={() => setViewMode("day")}
-              className={`px-3 py-1 text-sm ${
-                viewMode === "day"
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              Zi
-            </button>
-            <button
-              onClick={() => setViewMode("week")}
-              className={`px-3 py-1 text-sm ${
-                viewMode === "week"
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              Săptămână
-            </button>
-            <button
-              onClick={() => setViewMode("month")}
-              className={`px-3 py-1 text-sm ${
-                viewMode === "month"
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              Lună
-            </button>
+          <div className="flex">
+            <div className="flex border rounded-md overflow-hidden mr-4">
+              <button
+                onClick={() => setViewMode("day")}
+                className={`px-3 py-1 text-sm ${
+                  viewMode === "day"
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                Zi
+              </button>
+              <button
+                onClick={() => setViewMode("week")}
+                className={`px-3 py-1 text-sm ${
+                  viewMode === "week"
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                Săptămână
+              </button>
+              <button
+                onClick={() => setViewMode("month")}
+                className={`px-3 py-1 text-sm ${
+                  viewMode === "month"
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                Lună
+              </button>
+            </div>
+
+            {onCreateEvent && (
+              <button
+                onClick={onCreateEvent}
+                className="px-3 py-1 text-sm bg-yellow-500 text-white hover:bg-yellow-600 rounded-md flex items-center"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 mr-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+                Adaugă eveniment
+              </button>
+            )}
           </div>
         </div>
 
@@ -293,6 +325,32 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({
                         </div>
                       );
                     })}
+
+                    {/* Buton de adăugare eveniment la ziua curentă dacă e ziua din luna curentă */}
+                    {day.isCurrentMonth &&
+                      onCreateEvent &&
+                      dayEvents.length === 0 && (
+                        <button
+                          onClick={onCreateEvent}
+                          className="w-full h-12 mt-2 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 mr-1"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                            />
+                          </svg>
+                          <span className="text-xs">Adaugă</span>
+                        </button>
+                      )}
                   </div>
                 </div>
               </div>
@@ -403,9 +461,32 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({
                 </svg>
               </div>
               <p className="text-gray-600 mb-2">Niciun eveniment planificat</p>
-              <p className="text-gray-500 text-sm">
+              <p className="text-gray-500 text-sm mb-4">
                 Nu există evenimente apropiate pentru această echipă.
               </p>
+
+              {onCreateEvent && (
+                <button
+                  onClick={onCreateEvent}
+                  className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 text-sm inline-flex items-center"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
+                  </svg>
+                  Adaugă primul eveniment
+                </button>
+              )}
             </div>
           )}
         </div>

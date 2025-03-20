@@ -1,4 +1,4 @@
-import ChatLanding from "../services/chat/ChatLandingPage";
+import ChatLanding from "../services/chatAsistant/ChatLandingPage";
 const ChatPage = () => {
   return <ChatLanding />;
 };
