@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
 const HeroCarousel: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -80,7 +81,8 @@ const HeroCarousel: React.FC = () => {
                   >
                     Get Started
                   </button>
-                  <button
+                  <Link
+                    href="/learnmore"
                     className="px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-300"
                     style={{
                       backgroundColor: "transparent",
@@ -90,7 +92,7 @@ const HeroCarousel: React.FC = () => {
                     }}
                   >
                     Learn More
-                  </button>
+                  </Link>
                 </div>
               </div>
             </div>

@@ -36,7 +36,6 @@ export interface RegisterResponse {
     email: string;
     role: ROLE;
   };
- 
 }
 
 export const registerUser = async (
@@ -64,11 +63,15 @@ export const registerUser = async (
     formData.append("profileImage", profileImage);
   }
 
-  const response = await api.post<RegisterResponse>("/register", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+  const response = await api.post<RegisterResponse>(
+    "/api/auth/register",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
 
   return response.data;
 };

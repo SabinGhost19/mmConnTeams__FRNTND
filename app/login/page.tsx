@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useLogin } from "../hooks/useAuth";
 import { useRouter } from "next/navigation";
-
+import Link from "next/link";
 const loginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,7 +30,7 @@ const loginPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[url('https://source.unsplash.com/random/?technology')] bg-cover bg-center opacity-30"></div>
+      <div className="absolute inset-0 bg-[url('https://source.unsplash.com/ram/?technology')] bg-cover bg-center opacity-30"></div>
       <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-md"></div>
 
       <div className="relative z-10 w-full max-w-md p-8 rounded-2xl shadow-lg bg-gray-800 text-white border border-gray-700">
@@ -86,9 +86,9 @@ const loginPage = () => {
 
         <p className="text-center text-gray-400 mt-4">
           Don't have an account?{" "}
-          <a href="#" className="text-blue-400 hover:underline">
+          <Link href="/register" className="text-blue-400 hover:underline">
             Sign up
-          </a>
+          </Link>
         </p>
       </div>
     </div>
