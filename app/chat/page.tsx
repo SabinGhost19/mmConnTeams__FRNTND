@@ -1,4 +1,4 @@
-import TeamsChat from "../services/chat/ChatLandingPage";
+import TeamsChat from "../services/new_chat/LandingPage";
 const TeamsChatPage = () => {
   return <TeamsChat />;
 };
