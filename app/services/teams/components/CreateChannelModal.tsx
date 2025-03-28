@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { api as axios } from "@/app/lib/api";
 
 interface CreateChannelModalProps {
   teamId: number;
@@ -21,19 +22,42 @@ const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
   const [channelName, setChannelName] = useState("");
   const [channelDescription, setChannelDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!channelName.trim()) {
       return; // Validare simplă
     }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await axios.post("/api/channel", {
+        teamId: teamId,
+        channelName: channelName,
+        isPrivate: isPrivate,
+        channelDescription: channelDescription,
+      });
+      if (response.data) {
+        console.log("Raspuns tams created: ");
+        console.log(response.data);
+        // Apelăm onSubmit cu datele echipei
+        onSubmit({
+          name: channelName,
+          description: channelDescription,
+          isPrivate: isPrivate,
+        });
 
-    onSubmit({
-      name: channelName,
-      description: channelDescription,
-      isPrivate: isPrivate,
-    });
+        onClose(); // Închidem modalul
+      }
+    } catch (error) {
+      setError("A apărut o eroare la crearea channel");
+      console.error("Eroare la crearea channel:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

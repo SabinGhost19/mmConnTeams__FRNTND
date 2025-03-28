@@ -1,8 +1,9 @@
-// components/TeamsLanding/UpcomingEvents.tsx
-import React, { useState } from "react";
+"use client";
+import React, { useState, useEffect } from "react";
 import Team from "@/app/types/models_types/team";
 import Event from "@/app/types/models_types/event";
 import { UserTeam as User } from "@/app/types/models_types/userType";
+import Channel from "@/app/types/models_types/channel";
 
 interface UpcomingEventsProps {
   events: Event[];
@@ -11,7 +12,6 @@ interface UpcomingEventsProps {
   onCreateEvent?: (event: Omit<Event, "id">) => void;
 }
 
-// Interfața pentru datele formularului de creare eveniment
 interface EventFormData {
   teamId: number;
   channelId: number;
@@ -30,33 +30,79 @@ const UpcomingEvents: React.FC<UpcomingEventsProps> = ({
   onCreateEvent,
 }) => {
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
-  const [formData, setFormData] = useState<EventFormData>({
-    teamId: teams.length > 0 ? teams[0].id : 0,
-    channelId:
-      teams.length > 0 && teams[0].channels.length > 0
-        ? teams[0].channels[0].id
-        : 0,
-    title: "",
-    description: "",
-    date: new Date().toISOString().split("T")[0], // Data curentă în format YYYY-MM-DD
-    time: "12:00",
-    duration: 30,
-    attendees: [],
+
+  // Funcție pentru a obține primul canal disponibil
+  const getFirstAvailableChannel = (
+    teams: Team[]
+  ): { teamId: number; channelId: number } => {
+    if (teams.length === 0) {
+      return { teamId: 0, channelId: 0 };
+    }
+
+    const firstTeam = teams[0];
+    const firstChannel =
+      firstTeam.channels && firstTeam.channels.length > 0
+        ? firstTeam.channels[0]
+        : null;
+
+    return {
+      teamId: firstTeam.id,
+      channelId: firstChannel ? firstChannel.id : 0,
+    };
+  };
+
+  // Inițializare stare cu verificări suplimentare
+  const [formData, setFormData] = useState<EventFormData>(() => {
+    const { teamId, channelId } = getFirstAvailableChannel(teams);
+
+    return {
+      teamId,
+      channelId,
+      title: "",
+      description: "",
+      date: new Date().toISOString().split("T")[0],
+      time: "12:00",
+      duration: 30,
+      attendees: [],
+    };
   });
+
+  // State pentru echipa selectată
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(
     teams.length > 0 ? teams[0] : null
   );
+
+  // Effect pentru a actualiza starea când teams se schimbă
+  useEffect(() => {
+    if (teams.length > 0) {
+      const { teamId, channelId } = getFirstAvailableChannel(teams);
+
+      setFormData((prev) => ({
+        ...prev,
+        teamId,
+        channelId,
+      }));
+
+      setSelectedTeam(teams[0]);
+    }
+  }, [teams]);
 
   // Handler pentru schimbarea echipei
   const handleTeamChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const teamId = Number(e.target.value);
     const team = teams.find((t) => t.id === teamId) || null;
+
     setSelectedTeam(team);
-    setFormData({
-      ...formData,
+
+    // Verificare explicită pentru canale
+    const firstChannel =
+      team?.channels && team.channels.length > 0 ? team.channels[0] : null;
+
+    setFormData((prev) => ({
+      ...prev,
       teamId,
-      channelId: team && team.channels.length > 0 ? team.channels[0].id : 0,
-    });
+      channelId: firstChannel ? firstChannel.id : 0,
+    }));
   };
 
   // Handler pentru schimbarea valorilor formularului

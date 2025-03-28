@@ -4,6 +4,7 @@ import { FiSend, FiPaperclip, FiSmile } from "react-icons/fi";
 import EmojiPicker from "emoji-picker-react";
 
 import Message from "./Message";
+
 interface MessageType {
   id: string;
   sender: {
@@ -267,7 +268,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         </div>
       )}
 
-      {/* Message input */}
       <div className="p-4 border-t border-gray-200">
         <div className="relative flex items-center">
           <button

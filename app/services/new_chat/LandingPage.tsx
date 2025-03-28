@@ -3,16 +3,15 @@ import React, { useState, useEffect, useRef } from "react";
 import TeamsSidebar from "../chat/components/TeamSidebar";
 import ChatArea from "./components/ChatArea";
 import ChannelHeader from "../chat/components/ChatHeader";
-import axios from "axios";
+import { api as axios } from "@/app/lib/api";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
+import { getAccessToken } from "@/app/lib/auth-utils";
 
-// Define API URL base
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:8080/ws";
-
 // Define interfaces based on your database schema
 interface User {
   id: number;
@@ -98,6 +97,7 @@ const TeamsChat: React.FC = () => {
   >(new Map());
 
   // Initialize data and socket connection on component mount
+  // În locul conexiunii curente, voi face modificări:
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -106,15 +106,18 @@ const TeamsChat: React.FC = () => {
         // Fetch current user data
         const userResponse = await axios.get(`${API_BASE_URL}/users/current`);
         setCurrentUser(userResponse.data);
+        console.log("[DEBUG] Current User Loaded:", userResponse.data);
 
         // Fetch all users
         const usersResponse = await axios.get(`${API_BASE_URL}/users`);
         setUsers(usersResponse.data);
+        console.log("[DEBUG] Users Loaded:", usersResponse.data);
 
         // Fetch teams data
         const teamsResponse = await axios.get(`${API_BASE_URL}/teams`);
         const fetchedTeams = teamsResponse.data.map(mapTeamData);
         setTeams(fetchedTeams);
+        console.log("[DEBUG] Teams Loaded:", fetchedTeams);
 
         // Build a set of all channels the user is part of
         const userChannelIds = new Set<number>();
@@ -124,6 +127,7 @@ const TeamsChat: React.FC = () => {
           });
         });
         userChannelsRef.current = userChannelIds;
+        console.log("[DEBUG] User Channel IDs:", userChannelIds);
 
         if (fetchedTeams.length > 0) {
           setSelectedTeam(fetchedTeams[0]);
@@ -134,51 +138,128 @@ const TeamsChat: React.FC = () => {
         }
 
         setLoading(false);
+
+        // Initiate WebSocket connection after data load
+        initializeWebSocketConnection();
       } catch (err) {
-        console.error("Error initializing app:", err);
+        console.error("[ERROR] Error initializing app:", err);
         setError("Failed to load initial data. Please refresh the page.");
         setLoading(false);
       }
     };
 
-    initializeApp();
+    // 1. Funcția de inițializare WebSocket actualizată
+    const initializeWebSocketConnection = () => {
+      const token = getAccessToken();
+      console.log("[DEBUG] Token for WebSocket:", token);
 
-    // Set up STOMP WebSocket connection
-    const socket = new SockJS(SOCKET_URL);
-    stompClientRef.current = new Client({
-      webSocketFactory: () => socket,
-      debug: function (str) {
-        console.log(str);
-      },
-      reconnectDelay: 5000,
-      heartbeatIncoming: 4000,
-      heartbeatOutgoing: 4000,
-    });
+      if (!token) {
+        console.error("[ERROR] No token found for WebSocket connection");
+        setError("Authentication token is missing");
+        return;
+      }
 
-    return () => {
-      // Clean up STOMP client connection
-      if (stompClientRef.current && stompClientRef.current.connected) {
-        // Unsubscribe from all topics
-        Array.from(activeSubscriptionsRef.current.values()).forEach(
-          (subscription) => {
-            if (stompClientRef.current) {
-              stompClientRef.current.deactivate();
-            }
-          }
-        );
+      try {
+        // Opțiuni pentru SockJS pentru a dezactiva credentials
+        const sockJsOptions = {
+          transports: ["websocket", "xhr-streaming", "xhr-polling"],
+          withCredentials: false, // Important! Dezactivează credentials pentru a evita probleme CORS
+        };
+
+        const socket = new SockJS(SOCKET_URL, null, sockJsOptions);
+        console.log("[DEBUG] SockJS Socket created:", socket);
+
+        stompClientRef.current = new Client({
+          webSocketFactory: () => socket,
+          connectHeaders: {
+            Authorization: `Bearer ${token}`,
+          },
+          debug: (str) => {
+            console.log("[STOMP DEBUG]", str);
+          },
+          reconnectDelay: 5000,
+          heartbeatIncoming: 4000,
+          heartbeatOutgoing: 4000,
+          // Restul configurației rămâne la fel
+        });
+
+        // Activăm conexiunea
+        stompClientRef.current.activate();
+      } catch (error) {
+        console.error("[ERROR] WebSocket initialization failed:", error);
       }
     };
-  }, []);
+
+    // 2. Modificarea funcției de autentificare pentru a gestiona UUID-uri
+    stompClientRef.current?.publish({
+      destination: "/app/authenticate",
+      body: JSON.stringify({
+        userId: currentUser?.id.toString(), // Asigură-te că este string pentru UUID
+      }),
+    });
+
+    // 3. Actualizarea funcției joinChannel pentru a gestiona UUID-uri
+    const joinChannel = (channelId: string) => {
+      if (!stompClientRef.current || !stompClientRef.current.connected) return;
+
+      // Notifică serverul despre alăturarea la canal - asigură-te că trimiți un Integer
+      stompClientRef.current.publish({
+        destination: "/app/join-channel",
+        body: JSON.stringify(parseInt(channelId, 10)), // Asigură-te că este Integer
+      });
+
+      // Restul codului rămâne la fel
+    };
+
+    // 4. Actualizarea focusChannel pentru a gestiona UUID-uri
+    if (
+      stompClientRef.current &&
+      stompClientRef.current.connected &&
+      selectedChannel
+    ) {
+      stompClientRef.current.publish({
+        destination: "/app/focus-channel",
+        body: JSON.stringify(selectedChannel.id.toString()), // Asigură-te că este string pentru UUID
+      });
+    }
+
+    initializeApp();
+
+    // Cleanup function
+    return () => {
+      if (stompClientRef.current) {
+        try {
+          console.log("[DEBUG] Deactivating STOMP client");
+          stompClientRef.current.deactivate();
+        } catch (deactivationError) {
+          console.error(
+            "[ERROR] Failed to deactivate STOMP client:",
+            deactivationError
+          );
+        }
+      }
+    };
+  }, []); // Dependențe goale pentru a rula o singură dată la mount
 
   // Connect to STOMP after user data is loaded
   useEffect(() => {
     if (!currentUser || !stompClientRef.current) return;
 
+    // Obține token-ul JWT din localStorage (sau de unde îl stochezi)
+    const token = getAccessToken(); // Ajustează pentru a se potrivi cu locația reală a token-ului
+
+    // Setează header-ul de autorizare pentru toate conexiunile
+    if (token) {
+      stompClientRef.current.connectHeaders = {
+        Authorization: `Bearer ${token}`,
+      };
+    }
+
     // Set up connection activation
     stompClientRef.current.onConnect = () => {
       console.log("Connected to STOMP WebSocket");
 
-      // Authenticate user
+      // Authenticate user - păstrăm pentru compatibilitate
       stompClientRef.current?.publish({
         destination: "/app/authenticate",
         body: JSON.stringify({ userId: currentUser.id }),

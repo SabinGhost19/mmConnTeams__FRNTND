@@ -73,6 +73,11 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
   const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
   const [showInviteUserModal, setShowInviteUserModal] = useState(false);
 
+  useEffect(() => {
+    // Actualizează teams când initialTeams se schimbă
+    setTeams(initialTeams);
+  }, [initialTeams]);
+
   const handleSelectTeam = (teamId: number) => {
     //request -------------------------
     //cel mai important
@@ -217,6 +222,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
 
   useEffect(() => {
     ////request -------------------------GET ..all messages
+    console.log("Teams: ...", teams);
     if (selectedChannel) {
       setMessages(generateMockMessages(selectedChannel.id));
     }

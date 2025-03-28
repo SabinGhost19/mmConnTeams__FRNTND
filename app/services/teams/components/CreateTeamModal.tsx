@@ -1,8 +1,7 @@
-// components/TeamsLanding/CreateTeamModal.tsx
 "use client";
 
 import React, { useState } from "react";
-
+import { api as axios } from "@/app/lib/api";
 interface CreateTeamModalProps {
   onClose: () => void;
   onSubmit: (teamData: {
@@ -19,6 +18,8 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
   const [teamName, setTeamName] = useState("");
   const [teamDescription, setTeamDescription] = useState("");
   const [teamIcon, setTeamIcon] = useState("💼");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Opțiuni de emoji pentru icon
   const iconOptions = [
@@ -39,18 +40,41 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
     "📈",
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!teamName.trim()) {
       return; // Validare simplă
     }
 
-    onSubmit({
-      name: teamName,
-      icon: teamIcon,
-      description: teamDescription,
-    });
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await axios.post("/api/teams", {
+        name: teamName,
+        icon: teamIcon,
+        description: teamDescription,
+      });
+
+      if (response.data) {
+        console.log("Raspuns tams created: ");
+        console.log(response.data);
+        // Apelăm onSubmit cu datele echipei
+        onSubmit({
+          name: teamName,
+          icon: teamIcon,
+          description: teamDescription,
+        });
+
+        onClose(); // Închidem modalul
+      }
+    } catch (error) {
+      setError("A apărut o eroare la crearea echipei");
+      console.error("Eroare la crearea echipei:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

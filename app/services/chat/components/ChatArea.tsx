@@ -250,12 +250,3 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 };
 
 export default ChatArea;
-
-
-Da, imi dau seama ca e foarte complex dar motovatia mea a fost sa am cat mai 
-multe functionalitati pentru a avea de unde alege si sa pot fi mai flexibil cu functionalitatea
- finala a proiectului, de exemplu partea cu auto deployment pe un alt cloud provider in caz de failover si tot ce 
- cuprinde asta as putea sa le las pe final, daca totul merge ok. Din reasearch-ul meu ar fi Cloudflare Workers cu propria infrastructura de deploy pe mai multe locatii simultan , mai este OpenFaaS pe partea de serverless
- doar ca este framework strict pe K8s - deploy 
- de functii pe pods iar la partea de configurare cu fisierul yaml e doar un alt 
-layer peste Terraform, eu in spate sa fac deploymentul cu Terraform defapt in functie de configul initial.
