@@ -15,7 +15,7 @@ const SOCKET_URL =
 
 // Define interfaces based on your database schema
 interface User {
-  id: number;
+  id: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -25,15 +25,15 @@ interface User {
 }
 
 interface UserDisplay {
-  id: number;
+  id: string;
   name: string;
   avatar?: string;
   status: string;
 }
 
 interface Channel {
-  id: number;
-  teamId: number;
+  id: string;
+  teamId: string;
   name: string;
   description?: string;
   isPrivate: boolean;
@@ -41,7 +41,7 @@ interface Channel {
 }
 
 interface Team {
-  id: number;
+  id: string;
   name: string;
   icon: string;
   description?: string;
@@ -50,7 +50,7 @@ interface Team {
 }
 
 interface Attachment {
-  id: number;
+  id: string;
   name: string;
   type: string;
   size: string;

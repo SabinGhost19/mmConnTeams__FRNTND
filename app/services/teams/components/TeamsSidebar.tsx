@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 
 interface TeamsSidebarProps {
   teams: any[];
-  selectedTeamId: number | null;
-  onSelectTeam: (teamId: number) => void;
+  selectedTeamId: string | null;
+  onSelectTeam: (teamId: string) => void;
   onCreateTeam: () => void;
   onBackToOverview: () => void;
 }

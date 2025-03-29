@@ -12,6 +12,7 @@ import Team from "@/app/types/models_types/team";
 import Event from "@/app/types/models_types/event";
 import File from "@/app/types/models_types/file";
 import Channel from "@/app/types/models_types/channel";
+import { UserTeam } from "../types/models_types/userType";
 
 const TeamsPage = () => {
   const [isLoading, setIsLoading] = useState(false);

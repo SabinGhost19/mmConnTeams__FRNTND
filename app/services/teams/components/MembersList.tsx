@@ -1,33 +1,24 @@
 // components/TeamsLanding/MembersList.tsx
 "use client";
 import React, { useState } from "react";
-
-// Definim o interfață pentru membrul echipei
-interface Member {
-  id: number;
-  name: string;
-  role: string;
-  department: string;
-  status: "online" | "busy" | "away" | "offline";
-  avatar?: string; // Optional, poate să nu existe
-}
+import { UserTeam } from "@/app/types/models_types/userType";
 
 // Definim tipul pentru gruparea membrilor după departament
 interface MembersByDepartment {
-  [department: string]: Member[];
+  [department: string]: UserTeam[];
 }
 
 // Props pentru componenta principală
 interface MembersListProps {
-  teamId: number;
-  members: Member[];
-  onStartChat: (userId: number) => void;
+  teamId: string;
+  members: UserTeam[];
+  onStartChat: (userId: string) => void;
   onInviteUser: () => void;
 }
 
 // Props pentru componenta MemberCard
 interface MemberCardProps {
-  member: Member;
+  member: UserTeam;
   statusColor: string;
   onStartChat: () => void;
 }
@@ -47,22 +38,32 @@ const MembersList: React.FC<MembersListProps> = ({
   // Filtrare după textul căutat
   const filteredMembers = members.filter(
     (member) =>
-      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.department.toLowerCase().includes(searchQuery.toLowerCase())
+      `${member.firstName} ${member.lastName}`
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      member.roles
+        .join(", ")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      (member.department?.toLowerCase() || "").includes(
+        searchQuery.toLowerCase()
+      )
   );
 
   // Sortare membri
   const sortedMembers = [...filteredMembers].sort((a, b) => {
+    const aName = `${a.firstName} ${a.lastName}`;
+    const bName = `${b.firstName} ${b.lastName}`;
+
     if (sortBy === "name") {
-      return a.name.localeCompare(b.name);
+      return aName.localeCompare(bName);
     } else if (sortBy === "department") {
-      return a.department.localeCompare(b.department);
+      return (a.department || "").localeCompare(b.department || "");
     } else {
       // Status - online first, then other statuses
       if (a.status === "online" && b.status !== "online") return -1;
       if (a.status !== "online" && b.status === "online") return 1;
-      return a.name.localeCompare(b.name);
+      return aName.localeCompare(bName);
     }
   });
 
@@ -80,7 +81,7 @@ const MembersList: React.FC<MembersListProps> = ({
   );
 
   // Obține status color pentru avatar
-  const getStatusColor = (status: Member["status"]): string => {
+  const getStatusColor = (status?: string): string => {
     switch (status) {
       case "online":
         return "bg-green-400";
@@ -175,7 +176,7 @@ const MembersList: React.FC<MembersListProps> = ({
                     {department}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {(deptMembers as Member[]).map((member) => (
+                    {deptMembers.map((member) => (
                       <MemberCard
                         key={member.id}
                         member={member}
@@ -256,53 +257,59 @@ const MemberCard: React.FC<MemberCardProps> = ({
   member,
   statusColor,
   onStartChat,
-}) => (
-  <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-    <div className="flex items-start">
-      <div className="relative">
-        <img
-          src={
-            member.avatar ||
-            `https://ui-avatars.com/api/?name=${encodeURIComponent(
-              member.name
-            )}&background=0D8ABC&color=fff`
-          }
-          alt={member.name}
-          className="w-12 h-12 rounded-full"
-        />
-        <span
-          className={`absolute bottom-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white ${statusColor}`}
-        ></span>
-      </div>
+}) => {
+  const fullName = `${member.firstName} ${member.lastName}`;
 
-      <div className="ml-3 flex-1">
-        <h3 className="font-medium text-gray-900">{member.name}</h3>
-        <p className="text-sm text-gray-500">{member.role}</p>
-        <p className="text-xs text-gray-500 mt-1">{member.department}</p>
-      </div>
-
-      <button
-        onClick={onStartChat}
-        className="text-blue-600 hover:text-blue-800 p-1"
-        title="Start chat"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+      <div className="flex items-start">
+        <div className="relative">
+          <img
+            src={
+              member.avatar ||
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                fullName
+              )}&background=0D8ABC&color=fff`
+            }
+            alt={fullName}
+            className="w-12 h-12 rounded-full"
           />
-        </svg>
-      </button>
+          <span
+            className={`absolute bottom-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white ${statusColor}`}
+          ></span>
+        </div>
+
+        <div className="ml-3 flex-1">
+          <h3 className="font-medium text-gray-900">{fullName}</h3>
+          <p className="text-sm text-gray-500">{member.roles.join(", ")}</p>
+          {member.department && (
+            <p className="text-xs text-gray-500 mt-1">{member.department}</p>
+          )}
+        </div>
+
+        <button
+          onClick={onStartChat}
+          className="text-blue-600 hover:text-blue-800 p-1"
+          title="Start chat"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default MembersList;

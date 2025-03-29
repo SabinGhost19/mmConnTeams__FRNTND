@@ -8,15 +8,17 @@ import Team from "@/app/types/models_types/team";
 import Event from "@/app/types/models_types/event";
 import { api as axios } from "@/app/lib/api";
 import { toASCII } from "punycode";
+import EnterTeamModal from "./EnterTeamModal";
 
 interface TeamsOverviewProps {
   teams: Team[];
   users: User[];
   events: Event[];
-  onSelectTeam: (teamId: number) => void;
-  onStartChat: (userId: number) => void;
-  onJoinChannel: (teamId: number, channelId: number) => void;
+  onSelectTeam: (teamId: string) => void;
+  onStartChat: (userId: string) => void;
+  onJoinChannel: (teamId: string, channelId: string) => void;
   onCreateTeam: () => void;
+  onEnterTeamById?: (teamId: string) => void;
 }
 
 const TeamsOverview: React.FC<TeamsOverviewProps> = ({
@@ -27,8 +29,10 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
   onStartChat,
   onJoinChannel,
   onCreateTeam,
+  onEnterTeamById,
 }) => {
   const [totalChannels, setTotalChannels] = useState(0);
+  const [showEnterTeamModal, setShowEnterTeamModal] = useState<boolean>(false);
 
   useEffect(() => {
     const loadTotalChannels = async () => {
@@ -54,6 +58,20 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
     loadTotalChannels();
   }, [teams]);
 
+  const handleEnterTeamById = async (teamId: string) => {
+    try {
+      if (onEnterTeamById) {
+        await onEnterTeamById(teamId);
+        setShowEnterTeamModal(false);
+
+        // Opțional: reîncarcă echipele sau actualizează starea
+        // fetchTeams();
+      }
+    } catch (error) {
+      // Gestionare erori suplimentară dacă este necesar
+      console.error("Eroare la intrarea în echipă:", error);
+    }
+  };
   const fetchTeamChannels = async (teamId: string): Promise<Channel[]> => {
     try {
       const response = await axios.get<Channel[]>(
@@ -83,6 +101,26 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
           <h1 className="text-2xl font-bold text-gray-800">
             Prezentare generală Teams
           </h1>
+          <button
+            onClick={() => setShowEnterTeamModal(true)}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 px-4 rounded-md flex items-center"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 mr-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            Intră în echipă după ID
+          </button>
           <button
             onClick={onCreateTeam}
             className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center"
@@ -201,6 +239,13 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
               ))}
             </div>
           </div>
+          {/* Modal pentru intrarea într-o echipă */}
+          {showEnterTeamModal && (
+            <EnterTeamModal
+              onClose={() => setShowEnterTeamModal(false)}
+              onEnterTeam={handleEnterTeamById}
+            />
+          )}
 
           <div className="lg:w-80 space-y-6">
             <UpcomingEvents events={sortedEvents} teams={teams} users={users} />

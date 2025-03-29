@@ -2,7 +2,7 @@
 import React from "react";
 
 interface Member {
-  id: number;
+  id: string;
   name: string;
   role: string;
   department: string;
@@ -11,7 +11,7 @@ interface Member {
 }
 
 interface Channel {
-  id: number;
+  id: string;
   name: string;
   unreadCount: number;
 }
@@ -21,13 +21,13 @@ interface NewEvent {
   description: string;
   date: string;
   duration: number;
-  channelId: number;
+  channelId: string;
   attendees: number[];
-  teamId: number;
+  teamId: string;
 }
 
 interface CreateEventModalProps {
-  teamId: number;
+  teamId: string;
   channels: Channel[];
   members: Member[];
   onClose: () => void;
@@ -57,7 +57,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
     const duration = Number(formData.get("duration"));
 
     // Convertim lista de participanți selectați
-    const attendees: number[] = [];
+    const attendees: string[] = [];
     members.forEach((member) => {
       if (formData.get(`attendee-${member.id}`)) {
         attendees.push(member.id);

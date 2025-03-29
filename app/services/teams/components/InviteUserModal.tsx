@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 
 interface InviteUserModalProps {
-  teamId: number;
+  teamId: string;
   teamName: string;
   onClose: () => void;
   onSubmit: (inviteData: {

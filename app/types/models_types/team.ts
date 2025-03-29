@@ -1,11 +1,11 @@
 import Channel from "./channel";
 
 export default interface Team {
-  id: number;
+  id: string;
   name: string;
   icon: string;
   description: string;
   unreadCount: number;
-  members: number[];
+  members: string[];
   channels: Channel[];
 }

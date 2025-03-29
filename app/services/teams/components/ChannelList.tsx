@@ -1,44 +1,70 @@
-// components/TeamsLanding/ChannelList.tsx
 "use client";
 
 import React, { useState } from "react";
 
+interface Channel {
+  id: string;
+  name?: string; // Facem name optional pentru a preveni erori
+  unreadCount?: number;
+  [key: string]: any; // Pentru alte proprietăți necunoscute
+}
+
 interface ChannelListProps {
-  teamId: number;
-  channels: any[];
-  onJoinChannel: (teamId: number, channelId: number) => void;
+  teamId: string;
+  channels?: Channel[]; // Facem channels optional
+  onJoinChannel: (teamId: string, channelId: string) => void;
   onCreateChannel: () => void;
 }
 
 const ChannelList: React.FC<ChannelListProps> = ({
   teamId,
-  channels,
+  channels = [], // Valoare implicită array gol
   onJoinChannel,
   onCreateChannel,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("activity"); // 'activity', 'name', 'unread'
+  const [sortBy, setSortBy] = useState("activity");
 
-  // Filtrare după textul căutat
-  const filteredChannels = channels.filter((channel) =>
-    channel.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filtrare sigură după textul căutat
+  const filteredChannels = channels.filter((channel) => {
+    // Verificăm existența channel și a numelui
+    if (!channel || !channel.name) return false;
 
-  // Sortare canale
-  const sortedChannels = [...filteredChannels].sort((a, b) => {
-    if (sortBy === "name") {
-      return a.name.localeCompare(b.name);
-    } else if (sortBy === "unread") {
-      return b.unreadCount - a.unreadCount;
-    } else {
-      // Activitate - implicit sortăm după unread, dar în realitate ar trebui să sortăm
-      // după ultima activitate (timestamp-ul ultimului mesaj)
-      return b.unreadCount - a.unreadCount;
+    try {
+      return channel.name.toLowerCase().includes(searchQuery.toLowerCase());
+    } catch (e) {
+      console.error("Error filtering channel:", channel, e);
+      return false;
     }
   });
 
+  // Sortare sigură a canalelor
+  const sortedChannels = [...filteredChannels].sort((a, b) => {
+    // Verificăm existența obiectelor pentru sortare
+    if (!a || !b) return 0;
+
+    if (sortBy === "name") {
+      // Verificăm existența numelor
+      const nameA = a.name || "";
+      const nameB = b.name || "";
+      return nameA.localeCompare(nameB);
+    } else if (sortBy === "unread") {
+      // Verificăm existența unreadCount
+      const countA = a.unreadCount || 0;
+      const countB = b.unreadCount || 0;
+      return countB - countA;
+    } else {
+      // Activitate - implicit sortăm după unread
+      const countA = a.unreadCount || 0;
+      const countB = b.unreadCount || 0;
+      return countB - countA;
+    }
+  });
+
+  // Restul componentei rămâne la fel...
   return (
     <div className="bg-white rounded-lg shadow">
+      {/* Header cu buton de creare canal */}
       <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
         <h2 className="font-bold text-gray-800">Canale</h2>
         <button
@@ -63,7 +89,7 @@ const ChannelList: React.FC<ChannelListProps> = ({
         </button>
       </div>
 
-      {/* Search & Sort */}
+      {/* Căutare și sortare */}
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
           <div className="relative flex-grow">
@@ -107,66 +133,70 @@ const ChannelList: React.FC<ChannelListProps> = ({
         </div>
       </div>
 
-      {/* Channels List */}
+      {/* Lista de canale */}
       {sortedChannels.length > 0 ? (
         <div className="divide-y divide-gray-200">
-          {sortedChannels.map((channel) => (
-            <div
-              key={channel.id}
-              className="px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors"
-              onClick={() => onJoinChannel(teamId, channel.id)}
-            >
-              <div className="flex items-start">
-                <div className="flex items-center justify-center rounded-full bg-gray-100 p-2 mr-4">
-                  <span className="text-gray-500 font-medium text-lg">#</span>
-                </div>
+          {sortedChannels.map((channel) => {
+            // Verificare existență canal înainte de randare
+            if (!channel || !channel.id) return null;
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center">
-                    <h3 className="font-medium text-gray-900">
-                      {channel.name}
-                    </h3>
-                    {channel.unreadCount > 0 && (
-                      <span className="ml-3 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-                        {channel.unreadCount}
-                      </span>
-                    )}
+            return (
+              <div
+                key={channel.id}
+                className="px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => onJoinChannel(teamId, channel.id)}
+              >
+                <div className="flex items-start">
+                  <div className="flex items-center justify-center rounded-full bg-gray-100 p-2 mr-4">
+                    <span className="text-gray-500 font-medium text-lg">#</span>
                   </div>
 
-                  {/* Aici ar fi o descriere a canalului sau ultimul mesaj */}
-                  <p className="text-sm text-gray-500 mt-1">
-                    {channel.unreadCount > 0
-                      ? `${channel.unreadCount} mesaje necitite`
-                      : "Niciun mesaj necitit"}
-                  </p>
-                </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center">
+                      <h3 className="font-medium text-gray-900">
+                        {channel.name || "Canal fără nume"}
+                      </h3>
+                      {(channel.unreadCount || 0) > 0 && (
+                        <span className="ml-3 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                          {channel.unreadCount}
+                        </span>
+                      )}
+                    </div>
 
-                <button
-                  className="text-gray-400 hover:text-blue-600 p-1 rounded-full hover:bg-blue-50"
-                  title="Mai multe opțiuni"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Aici ar veni un meniu cu opțiuni pentru canal
-                  }}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+                    <p className="text-sm text-gray-500 mt-1">
+                      {(channel.unreadCount || 0) > 0
+                        ? `${channel.unreadCount} mesaje necitite`
+                        : "Niciun mesaj necitit"}
+                    </p>
+                  </div>
+
+                  <button
+                    className="text-gray-400 hover:text-blue-600 p-1 rounded-full hover:bg-blue-50"
+                    title="Mai multe opțiuni"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Aici ar veni un meniu cu opțiuni pentru canal
+                    }}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"
-                    />
-                  </svg>
-                </button>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="p-6 text-center">

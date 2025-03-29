@@ -1,17 +1,17 @@
-// components/TeamsLanding/TeamDetailView.tsx
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ChannelList from "./ChannelList";
 import MembersList from "./MembersList";
 import TeamCalendar from "./TeamCalendar";
 import TeamFiles from "./TeamFiles";
 import CreateEventModal from "./CreateEventModal";
+import EnterTeamModal from "./EnterTeamModal";
+import NotificationModal, { Notification } from "./NotificationModal";
 import Channel from "@/app/types/models_types/channel";
 import { UserTeam as Member } from "@/app/types/models_types/userType";
 import Team from "@/app/types/models_types/team";
 import Event from "@/app/types/models_types/event";
 import File from "@/app/types/models_types/file";
-// Definirea interfețelor pentru toate tipurile de date
 
 interface NewEvent {
   title: string;
@@ -20,7 +20,7 @@ interface NewEvent {
   duration: number;
   channelId: number;
   attendees: number[];
-  teamId: number;
+  teamId: string;
 }
 
 // Tipuri de vizualizare posibile
@@ -33,12 +33,20 @@ interface TeamDetailViewProps {
   files: File[];
   selectedView: string;
   onChangeView: (view: ViewType) => void;
-  onStartChat: (userId: number) => void;
-  onJoinChannel: (teamId: number, channelId: number) => void;
+  onStartChat: (userId: string) => void;
+  onJoinChannel: (teamId: string, channelId: string) => void;
   onCreateChannel: () => void;
   onInviteUser: () => void;
-  onSelectChannel?: (channelId: number) => void;
+  onSelectChannel?: (channelId: string) => void;
   onCreateEvent?: (event: NewEvent) => void;
+  onEnterTeamById?: (teamId: string) => void;
+  onFetchNotifications?: () => Promise<Notification[]>;
+  onMarkNotificationAsRead?: (notificationId: string) => Promise<void>;
+  onJoinTeam?: (teamId: string, notificationId: string) => Promise<void>;
+  onRejectTeamInvite?: (
+    teamId: string,
+    notificationId: string
+  ) => Promise<void>;
 }
 
 const TeamDetailView: React.FC<TeamDetailViewProps> = ({
@@ -53,17 +61,148 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
   onCreateChannel,
   onInviteUser,
   onCreateEvent,
+  onEnterTeamById,
+  onFetchNotifications,
+  onMarkNotificationAsRead,
+  onJoinTeam,
+  onRejectTeamInvite,
 }) => {
-  // State pentru modalul de creare eveniment
+  // State pentru modale
   const [showCreateEventModal, setShowCreateEventModal] =
     useState<boolean>(false);
+  const [showEnterTeamModal, setShowEnterTeamModal] = useState<boolean>(false);
+  const [showNotificationsModal, setShowNotificationsModal] =
+    useState<boolean>(false);
+
+  // State pentru afișarea ID-ului echipei
+  const [showTeamId, setShowTeamId] = useState<boolean>(false);
+
+  // State pentru notificări
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] =
+    useState<number>(0);
+  const [isLoadingNotifications, setIsLoadingNotifications] =
+    useState<boolean>(false);
+
+  const handleEnterTeamById = async (teamId: string) => {
+    try {
+      if (onEnterTeamById) {
+        await onEnterTeamById(teamId);
+        setShowEnterTeamModal(false);
+
+        // Opțional: reîncarcă echipele sau actualizează starea
+        // fetchTeams();
+      }
+    } catch (error) {
+      // Gestionare erori suplimentară dacă este necesar
+      console.error("Eroare la intrarea în echipă:", error);
+    }
+  };
+  // Fetch notificări la încărcarea componentei
+  useEffect(() => {
+    fetchNotifications();
+
+    // Opțional: actualizam notificările la intervale regulate
+    const intervalId = setInterval(fetchNotifications, 30000); // 30 secunde
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // Funcție pentru preluarea notificărilor
+  const fetchNotifications = async () => {
+    if (!onFetchNotifications) return;
+
+    setIsLoadingNotifications(true);
+    try {
+      const data = await onFetchNotifications();
+      setNotifications(data);
+      setUnreadNotificationsCount(
+        data.filter((notification) => !notification.isRead).length
+      );
+    } catch (error) {
+      console.error("Eroare la preluarea notificărilor:", error);
+    } finally {
+      setIsLoadingNotifications(false);
+    }
+  };
+
+  // Funcție pentru marcarea unei notificări ca citită
+  const handleMarkAsRead = async (notificationId: string) => {
+    if (!onMarkNotificationAsRead) return;
+
+    try {
+      await onMarkNotificationAsRead(notificationId);
+
+      // Actualizăm starea locală
+      setNotifications((prevNotifications) =>
+        prevNotifications.map((notification) =>
+          notification.id === notificationId
+            ? { ...notification, isRead: true }
+            : notification
+        )
+      );
+
+      // Recalculăm numărul de notificări necitite
+      setUnreadNotificationsCount((prev) => prev - 1);
+    } catch (error) {
+      console.error("Eroare la marcarea notificării ca citită:", error);
+    }
+  };
+
+  // Funcție pentru alăturarea la o echipă
+  const handleJoinTeam = async (teamId: string, notificationId: string) => {
+    if (!onJoinTeam) return;
+
+    try {
+      await onJoinTeam(teamId, notificationId);
+
+      // Actualizăm starea locală
+      await handleMarkAsRead(notificationId);
+
+      // Opțional: închide modalul și afișează mesaj de succes
+      setShowNotificationsModal(false);
+    } catch (error) {
+      console.error("Eroare la alăturarea la echipă:", error);
+    }
+  };
+
+  // Funcție pentru respingerea invitației la echipă
+  const handleRejectTeamInvite = async (
+    teamId: string,
+    notificationId: string
+  ) => {
+    if (!onRejectTeamInvite) return;
+
+    try {
+      await onRejectTeamInvite(teamId, notificationId);
+
+      // Actualizăm starea locală
+      await handleMarkAsRead(notificationId);
+    } catch (error) {
+      console.error("Eroare la respingerea invitației:", error);
+    }
+  };
+
+  // Funcție pentru copierea ID-ului în clipboard
+  const copyTeamId = () => {
+    navigator.clipboard.writeText(team.id.toString());
+    // Feedback vizual pentru utilizator
+    alert("ID-ul echipei a fost copiat în clipboard!");
+  };
+
+  // Funcție pentru a deschide modalul de intrare în echipă
 
   // Debugging console.log pentru a verifica starea modalului
   console.log("Modal state:", showCreateEventModal);
 
-  // Calculează statistici pentru echipă
-  const teamMembers = users.filter((user) => team.members.includes(user.id));
-  const onlineMembers = teamMembers.filter((user) => user.status === "online");
+  const teamMembers = Array.isArray(users)
+    ? users.filter((user) => team.members.includes(user.id))
+    : [];
+
+  const onlineMembers = Array.isArray(teamMembers)
+    ? teamMembers.filter((user) => user.status === "online")
+    : [];
+
   const totalChannels = team.channels.length;
   const totalFiles = files.length;
   const upcomingEvents = events.filter(
@@ -102,10 +241,67 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
             <div>
               <h1 className="text-2xl font-bold text-gray-800">{team.name}</h1>
               <p className="text-gray-600">{team.description}</p>
+              <div className="flex items-center mt-1">
+                <button
+                  onClick={() => setShowTeamId(!showTeamId)}
+                  className="text-blue-600 hover:text-blue-800 text-sm"
+                >
+                  {showTeamId ? "Ascunde ID echipă" : "Arată ID echipă"}
+                </button>
+                {showTeamId && (
+                  <div className="flex items-center ml-2">
+                    <span className="text-gray-600 text-sm mr-2">
+                      ID echipă: {team.id}
+                    </span>
+                    <button
+                      onClick={copyTeamId}
+                      className="p-1 bg-gray-100 hover:bg-gray-200 rounded"
+                      title="Copiază ID-ul"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 text-gray-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="flex items-center space-x-2">
+            {/* Buton pentru a intra într-o echipă folosind ID-ul */}
+            <button
+              onClick={() => setShowEnterTeamModal(true)}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 px-4 rounded-md flex items-center"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 mr-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              Intră în echipă după ID
+            </button>
+
             <button
               onClick={onCreateChannel}
               className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center"
@@ -173,62 +369,97 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
         </div>
       </div>
 
+      {/* Restul codului rămâne neschimbat */}
       {/* Tabs */}
-      <div className="bg-white border-b border-gray-200 px-6 flex">
-        <button
-          onClick={() => onChangeView("overview" as ViewType)}
-          className={`py-4 px-4 text-sm font-medium ${
-            selectedView === "overview"
-              ? "text-blue-600 border-b-2 border-blue-600"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
-        >
-          Prezentare generală
-        </button>
+      <div className="bg-white border-b border-gray-200 px-6 flex justify-between">
+        <div className="flex">
+          <button
+            onClick={() => onChangeView("overview" as ViewType)}
+            className={`py-4 px-4 text-sm font-medium ${
+              selectedView === "overview"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Prezentare generală
+          </button>
 
-        <button
-          onClick={() => onChangeView("channels" as ViewType)}
-          className={`py-4 px-4 text-sm font-medium ${
-            selectedView === "channels"
-              ? "text-blue-600 border-b-2 border-blue-600"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
-        >
-          Canale
-        </button>
+          <button
+            onClick={() => onChangeView("channels" as ViewType)}
+            className={`py-4 px-4 text-sm font-medium ${
+              selectedView === "channels"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Canale
+          </button>
 
-        <button
-          onClick={() => onChangeView("members" as ViewType)}
-          className={`py-4 px-4 text-sm font-medium ${
-            selectedView === "members"
-              ? "text-blue-600 border-b-2 border-blue-600"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
-        >
-          Membri
-        </button>
+          <button
+            onClick={() => onChangeView("members" as ViewType)}
+            className={`py-4 px-4 text-sm font-medium ${
+              selectedView === "members"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Membri
+          </button>
 
-        <button
-          onClick={() => onChangeView("events" as ViewType)}
-          className={`py-4 px-4 text-sm font-medium ${
-            selectedView === "events"
-              ? "text-blue-600 border-b-2 border-blue-600"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
-        >
-          Evenimente
-        </button>
+          <button
+            onClick={() => onChangeView("events" as ViewType)}
+            className={`py-4 px-4 text-sm font-medium ${
+              selectedView === "events"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Evenimente
+          </button>
 
-        <button
-          onClick={() => onChangeView("files" as ViewType)}
-          className={`py-4 px-4 text-sm font-medium ${
-            selectedView === "files"
-              ? "text-blue-600 border-b-2 border-blue-600"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
-        >
-          Fișiere
-        </button>
+          <button
+            onClick={() => onChangeView("files" as ViewType)}
+            className={`py-4 px-4 text-sm font-medium ${
+              selectedView === "files"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Fișiere
+          </button>
+        </div>
+
+        {/* Buton pentru notificări */}
+        <div className="flex items-center">
+          <button
+            onClick={() => {
+              setShowNotificationsModal(true);
+              fetchNotifications();
+            }}
+            className="py-2 px-2 relative text-gray-600 hover:text-gray-900"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+              />
+            </svg>
+
+            {unreadNotificationsCount > 0 && (
+              <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
+                {unreadNotificationsCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -651,7 +882,7 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
         )}
       </div>
 
-      {/* Modal pentru crearea unui eveniment - verificăm în mod explicit că onCreateEvent există */}
+      {/* Modal pentru crearea unui eveniment */}
       {showCreateEventModal && (
         <div className="z-50">
           <CreateEventModal
@@ -662,6 +893,25 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
             onCreateEvent={handleCreateEvent}
           />
         </div>
+      )}
+
+      {/* Modal pentru intrarea într-o echipă */}
+      {showEnterTeamModal && (
+        <EnterTeamModal
+          onClose={() => setShowEnterTeamModal(false)}
+          onEnterTeam={handleEnterTeamById}
+        />
+      )}
+
+      {/* Modal pentru notificări */}
+      {showNotificationsModal && (
+        <NotificationModal
+          notifications={notifications}
+          onClose={() => setShowNotificationsModal(false)}
+          onMarkAsRead={handleMarkAsRead}
+          onJoinTeam={handleJoinTeam}
+          onRejectTeamInvite={handleRejectTeamInvite}
+        />
       )}
     </div>
   );

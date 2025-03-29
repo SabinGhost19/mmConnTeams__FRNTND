@@ -1,7 +1,7 @@
 export default interface Event {
-  id: number;
-  teamId: number;
-  channelId: number;
+  id: string;
+  teamId: string;
+  channelId: string;
   title: string;
   description: string;
   date: string;

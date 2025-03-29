@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { api as axios } from "@/app/lib/api";
 
 interface CreateChannelModalProps {
-  teamId: number;
+  teamId: string;
   onClose: () => void;
   onSubmit: (channelData: {
     name: string;
@@ -29,32 +29,32 @@ const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
     e.preventDefault();
 
     if (!channelName.trim()) {
-      return; // Validare simplă
+      return;
     }
+
     setIsLoading(true);
     setError(null);
+
     try {
       const response = await axios.post("/api/channel", {
         teamId: teamId,
-        channelName: channelName,
+        name: channelName, // Nu channelName ci name
+        description: channelDescription,
         isPrivate: isPrivate,
-        channelDescription: channelDescription,
       });
+
       if (response.data) {
-        console.log("Raspuns tams created: ");
-        console.log(response.data);
-        // Apelăm onSubmit cu datele echipei
+        console.log("Channel creat:", response.data);
         onSubmit({
           name: channelName,
           description: channelDescription,
           isPrivate: isPrivate,
         });
-
-        onClose(); // Închidem modalul
+        onClose();
       }
     } catch (error) {
-      setError("A apărut o eroare la crearea channel");
-      console.error("Eroare la crearea channel:", error);
+      setError("A apărut o eroare la crearea canalului");
+      console.error("Eroare la crearea canalului:", error);
     } finally {
       setIsLoading(false);
     }

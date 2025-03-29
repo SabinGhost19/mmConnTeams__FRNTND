@@ -7,7 +7,7 @@ import CreateChannelModal from "./components/CreateChannelModal";
 import InviteUserModal from "./components/InviteUserModal";
 import CreateTeamModal from "./components/CreateTeamModal";
 import TeamDetailView from "./components/TeamDetailView";
-
+import { api as axios } from "@/app/lib/api";
 import { UserTeam } from "@/app/types/models_types/userType";
 import Team from "@/app/types/models_types/team";
 import Event from "@/app/types/models_types/event";
@@ -65,34 +65,69 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
 
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<ViewType>(ViewType.OVERVIEW);
   const [selectedView, setSelectedView] = useState<string>("overview");
 
   const [showCreateTeamModal, setShowCreateTeamModal] = useState(false);
   const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
   const [showInviteUserModal, setShowInviteUserModal] = useState(false);
+  const onFileUpload = () => {};
+  const onEnterTeamById = async (teamId: string) => {
+    try {
+      console.log("TeamId: ", teamId);
 
+      const response = await axios.put(
+        "/api/teams/enter",
+        { teamId }, // Send as an object, not raw string
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("Eroare la intrarea în echipă:", error);
+      throw error;
+    }
+  };
   useEffect(() => {
-    // Actualizează teams când initialTeams se schimbă
     setTeams(initialTeams);
   }, [initialTeams]);
 
-  const handleSelectTeam = (teamId: number) => {
-    //request -------------------------
-    //cel mai important
-    const team = teams.find((t: Team) => t.id === teamId);
-    if (team) {
+  const [loadingTeamMembers, setLoadingTeamMembers] = useState(false);
+
+  const fetchTeamMembers = async (teamId: string): Promise<UserTeam[]> => {
+    const response = await axios.get<UserTeam[]>(`/api/users/teams/${teamId}`, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return response.data;
+  };
+
+  const handleSelectTeam = async (teamId: string) => {
+    setLoadingTeamMembers(true);
+    try {
+      const team = teams.find((t: Team) => t.id === teamId);
+      if (!team) return;
+
       setSelectedTeam(team);
       setCurrentView(ViewType.TEAM_DETAIL);
+      setSelectedChannel(team.channels[0] || null);
 
-      if (team.channels.length > 0) {
-        setSelectedChannel(team.channels[0]);
-      }
+      const members = await fetchTeamMembers(teamId);
+      setUsers(members);
+    } catch (error) {
+      console.error("Error loading team:", error);
+    } finally {
+      setLoadingTeamMembers(false);
     }
   };
 
-  const handleSelectChannel = (channelId: number) => {
+  const handleSelectChannel = (channelId: string) => {
     if (!selectedTeam) return;
     //request -------------------------
     //depinde daca facem sus cum trebuie si luam
@@ -106,12 +141,12 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
     }
   };
 
-  const handleStartChat = (userId: number) => {
+  const handleStartChat = (userId: string) => {
     setSelectedUserId(userId);
     setCurrentView(ViewType.CHAT);
   };
 
-  const handleJoinChannel = (teamId: number, channelId: number) => {
+  const handleJoinChannel = (teamId: string, channelId: string) => {
     const team = teams.find((t: Team) => t.id === teamId);
     if (team) {
       setSelectedTeam(team);
@@ -125,16 +160,26 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
   };
 
   const handleCreateTeam = (teamData: TeamData) => {
-    //!!!!!!!!!!!!!!!get the user id and put it in the Team constructor
+    // Folosim Date.now().toString() pentru ID-uri unice temporare
+    const timestamp = Date.now().toString();
+
     const newTeam: Team = {
-      id: Date.now(),
+      id: timestamp, // ID-ul echipei ca string
       ...teamData,
-      members: [1],
+      members: ["1"], // Array de string-uri (ID-uri utilizator)
       unreadCount: 0,
-      channels: [{ id: Date.now() + 1, name: "General", unreadCount: 0 }],
+      channels: [
+        {
+          id: (Date.now() + 1).toString(), // ID canal ca string
+          name: "General",
+          unreadCount: 0,
+        },
+      ],
     };
-    ////request -------------------------POST ..add TEAM
+
+    // Aici ar trebui să faci request POST către backend
     setTeams([...teams, newTeam]);
+
     setShowCreateTeamModal(false);
 
     // Selectăm automat noua echipă
@@ -143,43 +188,41 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
     setCurrentView(ViewType.TEAM_DETAIL);
   };
 
-  const handleCreateChannel = (channelData: ChannelData) => {
+  const handleCreateChannel = async (channelData: ChannelData) => {
     if (!selectedTeam) return;
 
-    //UI FIRST ...and if failed...DISABLE
-    const newChannel: Channel = {
-      id: Date.now(),
-      ...channelData,
-      unreadCount: 0,
-    };
+    try {
+      // Trimite datele către backend
+      const response = await axios.get<Channel>(
+        `/api/teams/${selectedTeam.id}/channels`
+      );
 
-    ////request -------------------------POST ..add CHANNEL
-    const updatedTeams = teams.map((team: Team) => {
-      if (team.id === selectedTeam.id) {
-        return {
-          ...team,
-          channels: [...team.channels, newChannel],
-        };
-      }
-      return team;
-    });
+      const newChannel = response.data;
 
-    setTeams(updatedTeams);
+      // Actualizează starea locală cu răspunsul de la backend
+      const updatedTeams = teams.map((team: Team) => {
+        if (team.id === selectedTeam.id) {
+          return {
+            ...team,
+            channels: [...team.channels, newChannel],
+          };
+        }
+        return team;
+      });
 
-    // Actualizează și selectedTeam
-    if (selectedTeam) {
-      const updatedTeam = {
+      setTeams(updatedTeams);
+      setSelectedTeam({
         ...selectedTeam,
         channels: [...selectedTeam.channels, newChannel],
-      };
-      setSelectedTeam(updatedTeam);
-
-      // Selectăm automat noul canal
+      });
       setSelectedChannel(newChannel);
       setCurrentView(ViewType.CHANNEL);
+    } catch (error) {
+      console.error("Error creating channel:", error);
+      // Poți adăuga aici notificare pentru utilizator
+    } finally {
+      setShowCreateChannelModal(false);
     }
-
-    setShowCreateChannelModal(false);
   };
 
   const handleInviteUser = (inviteData: InviteData) => {
@@ -197,7 +240,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
 
   const [messages, setMessages] = useState<any[]>([]);
 
-  const generateMockMessages = (channelId: number) => {
+  const generateMockMessages = (channelId: string) => {
     return [
       {
         id: `${channelId}-1`,
@@ -291,6 +334,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
             onCreateChannel={() => setShowCreateChannelModal(true)}
             onInviteUser={() => setShowInviteUserModal(true)}
             onSelectChannel={handleSelectChannel}
+            onEnterTeamById={onEnterTeamById}
           />
         );
 
@@ -300,15 +344,16 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
         // Obține mesajele pentru canalul selectat
         const channelMessages =
           messages.filter(
-            (message: { channelId: number }) =>
+            (message: { channelId: string }) =>
               message.channelId === selectedChannel.id
           ) || [];
 
         // Calculează numărul de utilizatori online
-
-        const onlineUsersCount = users.filter(
-          (user) => user.status === "online"
-        ).length;
+        console.log("Users data:", users);
+        console.log("Type of users:", typeof users);
+        const onlineUsersCount = Array.isArray(users)
+          ? users.filter((user) => user?.status === "online").length
+          : 0;
         return (
           <div className="flex flex-col h-full overflow-hidden">
             <div className="flex items-center p-4 border-b border-gray-200">
@@ -323,7 +368,6 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
               </h2>
             </div>
 
-            {/* Integrăm componenta de chat */}
             <div className="flex flex-col flex-1 overflow-hidden">
               <ChannelHeader
                 team={selectedTeam}
@@ -334,12 +378,13 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
 
               <ChatArea
                 messages={messages}
-                currentUser={users[0]} // Presupunem că primul membru este utilizatorul curent
+                currentUser={users[0]}
                 users={users}
                 onSendMessage={handleSendMessage}
                 onReaction={handleReaction}
                 teamName={selectedTeam.name}
                 channelName={selectedChannel.name}
+                onFileUpload={onFileUpload}
               />
             </div>
           </div>
@@ -382,6 +427,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
             onStartChat={handleStartChat}
             onJoinChannel={handleJoinChannel}
             onCreateTeam={() => setShowCreateTeamModal(true)}
+            onEnterTeamById={onEnterTeamById}
           />
         );
     }
@@ -393,7 +439,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
         <title>Teams - Colaborare | Aplicația Ta</title>
         <meta
           name="description"
-          content="Gestionează echipele, canalele și colaborarea în cadrul organizației tale"
+          content="Gestionează echipele,  ele și colaborarea în cadrul organizației tale"
         />
         <meta name="darkreader-lock" content="true" />
       </Head>
@@ -402,7 +448,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
         {/* Sidebar */}
         <TeamsSidebar
           teams={teams}
-          selectedTeamId={selectedTeam?.id as number}
+          selectedTeamId={selectedTeam?.id as string}
           onSelectTeam={handleSelectTeam}
           onCreateTeam={() => setShowCreateTeamModal(true)}
           onBackToOverview={handleBackToOverview}

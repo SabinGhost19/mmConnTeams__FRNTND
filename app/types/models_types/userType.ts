@@ -9,11 +9,13 @@ export interface User {
 }
 
 export interface UserTeam {
-  id: number;
   name: string;
+  id: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  avatar: string;
-  status: "online" | "offline" | "busy" | "away";
-  role: string;
-  department: string;
+  status?: string;
+  avatar?: string | null;
+  department?: string | null;
+  roles: string[];
 }

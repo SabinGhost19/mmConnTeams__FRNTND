@@ -6,8 +6,8 @@ interface TeamsSidebarProps {
   teams: any[];
   selectedTeam: any;
   selectedChannel: any;
-  onTeamSelect: (teamId: number) => void;
-  onChannelSelect: (channelId: number) => void;
+  onTeamSelect: (teamId: string) => void;
+  onChannelSelect: (channelId: string) => void;
   onCloseMobileSidebar: () => void;
 }
 
@@ -19,11 +19,11 @@ const TeamsSidebar: React.FC<TeamsSidebarProps> = ({
   onChannelSelect,
   onCloseMobileSidebar,
 }) => {
-  const [expandedTeams, setExpandedTeams] = useState<number[]>([
+  const [expandedTeams, setExpandedTeams] = useState<string[]>([
     selectedTeam.id,
   ]);
 
-  const toggleTeamExpand = (teamId: number) => {
+  const toggleTeamExpand = (teamId: string) => {
     if (expandedTeams.includes(teamId)) {
       setExpandedTeams(expandedTeams.filter((id) => id !== teamId));
     } else {
@@ -31,7 +31,7 @@ const TeamsSidebar: React.FC<TeamsSidebarProps> = ({
     }
   };
 
-  const handleTeamClick = (teamId: number) => {
+  const handleTeamClick = (teamId: string) => {
     onTeamSelect(teamId);
 
     // Expand the team if it's not already expanded
@@ -42,7 +42,7 @@ const TeamsSidebar: React.FC<TeamsSidebarProps> = ({
     onCloseMobileSidebar();
   };
 
-  const handleChannelClick = (channelId: number) => {
+  const handleChannelClick = (channelId: string) => {
     onChannelSelect(channelId);
     onCloseMobileSidebar();
   };
@@ -169,26 +169,83 @@ const TeamsSidebar: React.FC<TeamsSidebarProps> = ({
               {/* Channels */}
               {expandedTeams.includes(team.id) && (
                 <ul className="ml-8 mt-1 space-y-1">
-                  {team.channels.map((channel) => (
-                    <li
-                      key={channel.id}
-                      className={`flex items-center px-2 py-1.5 rounded-md cursor-pointer ${
-                        selectedChannel.id === channel.id &&
-                        selectedTeam.id === team.id
-                          ? "bg-gray-200 font-medium"
-                          : "hover:bg-gray-100 text-gray-700"
-                      }`}
-                      onClick={() => handleChannelClick(channel.id)}
-                    >
-                      <span className="text-gray-400 mr-2">#</span>
-                      <span>{channel.name}</span>
-                      {channel.unreadCount > 0 && (
-                        <span className="ml-auto bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
-                          {channel.unreadCount}
-                        </span>
-                      )}
-                    </li>
-                  ))}
+                  {team.channels.map(
+                    (channel: {
+                      id: React.Key | null | undefined;
+                      name:
+                        | string
+                        | number
+                        | bigint
+                        | boolean
+                        | React.ReactElement<
+                            unknown,
+                            string | React.JSXElementConstructor<any>
+                          >
+                        | Iterable<React.ReactNode>
+                        | React.ReactPortal
+                        | Promise<
+                            | string
+                            | number
+                            | bigint
+                            | boolean
+                            | React.ReactPortal
+                            | React.ReactElement<
+                                unknown,
+                                string | React.JSXElementConstructor<any>
+                              >
+                            | Iterable<React.ReactNode>
+                            | null
+                            | undefined
+                          >
+                        | null
+                        | undefined;
+                      unreadCount:
+                        | string
+                        | number
+                        | bigint
+                        | boolean
+                        | React.ReactElement<
+                            unknown,
+                            string | React.JSXElementConstructor<any>
+                          >
+                        | Iterable<React.ReactNode>
+                        | Promise<
+                            | string
+                            | number
+                            | bigint
+                            | boolean
+                            | React.ReactPortal
+                            | React.ReactElement<
+                                unknown,
+                                string | React.JSXElementConstructor<any>
+                              >
+                            | Iterable<React.ReactNode>
+                            | null
+                            | undefined
+                          >
+                        | null
+                        | undefined;
+                    }) => (
+                      <li
+                        key={channel.id}
+                        className={`flex items-center px-2 py-1.5 rounded-md cursor-pointer ${
+                          selectedChannel.id === channel.id &&
+                          selectedTeam.id === team.id
+                            ? "bg-gray-200 font-medium"
+                            : "hover:bg-gray-100 text-gray-700"
+                        }`}
+                        onClick={() => handleChannelClick(channel.id)}
+                      >
+                        <span className="text-gray-400 mr-2">#</span>
+                        <span>{channel.name}</span>
+                        {channel.unreadCount > 0 && (
+                          <span className="ml-auto bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
+                            {channel.unreadCount}
+                          </span>
+                        )}
+                      </li>
+                    )
+                  )}
 
                   {/* Add Channel Button */}
                   <li className="flex items-center px-2 py-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md cursor-pointer">

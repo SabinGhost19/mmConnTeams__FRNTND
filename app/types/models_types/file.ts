@@ -1,7 +1,7 @@
 export default interface File {
-  id: number;
-  teamId: number;
-  channelId: number;
+  id: string;
+  teamId: string;
+  channelId: string;
   name: string;
   type: string;
   size: string;
