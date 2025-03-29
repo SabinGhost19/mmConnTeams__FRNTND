@@ -1,37 +1,14 @@
 // components/TeamsLanding/TeamCalendar.tsx
 "use client";
 import React, { useState } from "react";
-
-// Definirea interfețelor pentru toate tipurile de date
-interface Channel {
-  id: number;
-  name: string;
-  unreadCount: number;
-}
-
-interface Member {
-  id: number;
-  name: string;
-  role?: string;
-  department?: string;
-  status: "online" | "busy" | "away" | "offline";
-  avatar?: string;
-}
-
-interface Event {
-  id: number;
-  title: string;
-  description: string;
-  date: string | Date;
-  duration: number;
-  channelId: number;
-  attendees: number[];
-  teamId: number;
-}
+import Channel from "@/app/types/models_types/channel";
+import { UserTeam as Member } from "@/app/types/models_types/userType";
+import Event from "@/app/types/models_types/event";
 
 interface CalendarDay {
   date: Date;
   isCurrentMonth: boolean;
+  isPast: boolean;
 }
 
 interface TeamCalendarProps {
@@ -39,10 +16,9 @@ interface TeamCalendarProps {
   events: Event[];
   members: Member[];
   channels: Channel[];
-  onCreateEvent?: () => void;
+  onCreateEvent?: (date?: Date) => void;
 }
 
-// Tipul pentru modul de vizualizare
 type ViewMode = "day" | "week" | "month";
 
 const TeamCalendar: React.FC<TeamCalendarProps> = ({
@@ -54,8 +30,9 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({
 }) => {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // Funcții helper pentru calendar
+  // Helper functions
   const getDaysInMonth = (year: number, month: number): number => {
     return new Date(year, month + 1, 0).getDate();
   };
@@ -64,46 +41,57 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({
     return new Date(year, month, 1).getDay();
   };
 
-  // Generarea zilelor pentru calendar
+  // Generate calendar days with additional info
   const generateCalendarDays = (): CalendarDay[] => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     const daysInMonth = getDaysInMonth(year, month);
     const firstDayOfMonth = getFirstDayOfMonth(year, month);
 
     const days: CalendarDay[] = [];
 
-    // Zilele din luna anterioară pentru a umple prima săptămână
+    // Previous month days
     const daysInPrevMonth = getDaysInMonth(year, month - 1);
     for (let i = firstDayOfMonth - 1; i >= 0; i--) {
+      const date = new Date(year, month - 1, daysInPrevMonth - i);
+      date.setHours(0, 0, 0, 0);
       days.push({
-        date: new Date(year, month - 1, daysInPrevMonth - i),
+        date,
         isCurrentMonth: false,
+        isPast: date < today,
       });
     }
 
-    // Zilele din luna curentă
+    // Current month days
     for (let i = 1; i <= daysInMonth; i++) {
+      const date = new Date(year, month, i);
+      date.setHours(0, 0, 0, 0);
       days.push({
-        date: new Date(year, month, i),
+        date,
         isCurrentMonth: true,
+        isPast: date < today,
       });
     }
 
-    // Zilele din luna următoare pentru a umple ultima săptămână
-    const remainingDays = 42 - days.length; // 42 = 6 săptămâni * 7 zile
+    // Next month days
+    const remainingDays = 42 - days.length;
     for (let i = 1; i <= remainingDays; i++) {
+      const date = new Date(year, month + 1, i);
+      date.setHours(0, 0, 0, 0);
       days.push({
-        date: new Date(year, month + 1, i),
+        date,
         isCurrentMonth: false,
+        isPast: date < today,
       });
     }
 
     return days;
   };
 
-  // Filtrare evenimente pentru o anumită zi
+  // Filter events for a specific date
   const getEventsForDate = (date: Date): Event[] => {
     return events.filter((event) => {
       const eventDate = new Date(event.date);
@@ -115,7 +103,7 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({
     });
   };
 
-  // Funcții de navigare pentru calendar
+  // Navigation functions
   const goToPreviousMonth = (): void => {
     setCurrentDate(
       new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
@@ -130,146 +118,130 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({
 
   const goToToday = (): void => {
     setCurrentDate(new Date());
+    setSelectedDate(null);
   };
 
-  // Formatare dată pentru afișare
+  const handleDateClick = (day: CalendarDay): void => {
+    if (!day.isPast) {
+      setSelectedDate(day.date);
+      if (viewMode === "day") {
+        setCurrentDate(day.date);
+      }
+    }
+  };
+
+  const handleCreateEvent = (date?: Date): void => {
+    if (onCreateEvent) {
+      onCreateEvent(date || selectedDate || undefined);
+    }
+  };
+
+  // Formatting functions
   const formatMonth = (date: Date): string => {
     return date.toLocaleDateString("ro-RO", { month: "long", year: "numeric" });
   };
 
-  // Generare zile calendar
-  const calendarDays = generateCalendarDays();
+  const formatTime = (date: Date): string => {
+    return date.toLocaleTimeString("ro-RO", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
-  // Nume zile săptămână
-  const weekdays: string[] = ["Du", "Lu", "Ma", "Mi", "Jo", "Vi", "Sâ"];
+  // Generate calendar data
+  const calendarDays = generateCalendarDays();
+  const weekdays = ["Du", "Lu", "Ma", "Mi", "Jo", "Vi", "Sâ"];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-        <h2 className="font-bold text-gray-800">Calendar evenimente</h2>
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Calendar Header */}
+      <div className="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center">
+          <h2 className="text-xl font-semibold text-gray-800">Calendar</h2>
+          <span className="ml-2 px-2 py-1 text-sm bg-blue-100 text-blue-800 rounded-md">
+            {formatMonth(currentDate)}
+          </span>
+        </div>
 
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={goToPreviousMonth}
-            className="p-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+        <div className="flex items-center gap-2">
+          <div className="flex bg-gray-100 rounded-md p-1">
+            <button
+              onClick={() => setViewMode("day")}
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                viewMode === "day"
+                  ? "bg-white shadow-sm text-blue-600"
+                  : "text-gray-600 hover:bg-gray-200"
+              }`}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </button>
-
-          <button
-            onClick={goToToday}
-            className="px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded"
-          >
-            Astăzi
-          </button>
-
-          <button
-            onClick={goToNextMonth}
-            className="p-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+              Zi
+            </button>
+            <button
+              onClick={() => setViewMode("week")}
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                viewMode === "week"
+                  ? "bg-white shadow-sm text-blue-600"
+                  : "text-gray-600 hover:bg-gray-200"
+              }`}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </button>
+              Săptămână
+            </button>
+            <button
+              onClick={() => setViewMode("month")}
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                viewMode === "month"
+                  ? "bg-white shadow-sm text-blue-600"
+                  : "text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              Lună
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={goToPreviousMonth}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+              aria-label="Luna precedentă"
+            >
+              <ChevronLeftIcon />
+            </button>
+            <button
+              onClick={goToToday}
+              className="px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+            >
+              Astăzi
+            </button>
+            <button
+              onClick={goToNextMonth}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+              aria-label="Luna următoare"
+            >
+              <ChevronRightIcon />
+            </button>
+          </div>
+
+          {onCreateEvent && (
+            <button
+              onClick={() => handleCreateEvent()}
+              className="px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded-md flex items-center gap-1 transition-colors"
+            >
+              <PlusIcon />
+              Adaugă
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-gray-800">
-            {formatMonth(currentDate)}
-          </h3>
-
-          <div className="flex">
-            <div className="flex border rounded-md overflow-hidden mr-4">
-              <button
-                onClick={() => setViewMode("day")}
-                className={`px-3 py-1 text-sm ${
-                  viewMode === "day"
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                Zi
-              </button>
-              <button
-                onClick={() => setViewMode("week")}
-                className={`px-3 py-1 text-sm ${
-                  viewMode === "week"
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                Săptămână
-              </button>
-              <button
-                onClick={() => setViewMode("month")}
-                className={`px-3 py-1 text-sm ${
-                  viewMode === "month"
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                Lună
-              </button>
-            </div>
-
-            {onCreateEvent && (
-              <button
-                onClick={onCreateEvent}
-                className="px-3 py-1 text-sm bg-yellow-500 text-white hover:bg-yellow-600 rounded-md flex items-center"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-                Adaugă eveniment
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-1">
+      {/* Calendar Grid */}
+      <div className="p-4">
+        <div className="grid grid-cols-7 gap-px bg-gray-200">
           {/* Weekday headers */}
-          {weekdays.map((weekday, index) => (
+          {weekdays.map((weekday) => (
             <div
-              key={index}
-              className="text-center font-medium text-gray-700 text-sm py-2"
+              key={weekday}
+              className="bg-gray-100 py-2 text-center text-sm font-medium text-gray-700"
             >
               {weekday}
             </div>
@@ -278,217 +250,245 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({
           {/* Calendar days */}
           {calendarDays.map((day, index) => {
             const dayEvents = getEventsForDate(day.date);
-            const isToday =
-              new Date().toDateString() === day.date.toDateString();
+            const isToday = day.date.toDateString() === today.toDateString();
+            const isSelected =
+              selectedDate &&
+              day.date.toDateString() === selectedDate.toDateString();
 
             return (
               <div
                 key={index}
-                className={`aspect-square min-h-[100px] p-1 border ${
-                  day.isCurrentMonth ? "bg-white" : "bg-gray-50 text-gray-400"
-                } ${isToday ? "border-blue-500" : "border-gray-200"}`}
+                onClick={() => handleDateClick(day)}
+                className={`min-h-[120px] bg-white p-1.5 flex flex-col ${
+                  day.isCurrentMonth ? "" : "text-gray-400"
+                } ${
+                  isSelected
+                    ? "ring-2 ring-blue-500 z-10"
+                    : isToday
+                    ? "ring-1 ring-blue-300"
+                    : ""
+                } ${
+                  day.isPast
+                    ? "opacity-70 cursor-not-allowed"
+                    : "cursor-pointer hover:bg-gray-50"
+                } transition-colors`}
               >
-                <div className="h-full flex flex-col">
-                  <div
-                    className={`text-right p-1 ${
-                      isToday ? "text-blue-600 font-bold" : ""
-                    }`}
-                  >
-                    {day.date.getDate()}
-                  </div>
+                <div
+                  className={`text-right p-1 text-sm ${
+                    isToday ? "font-bold text-blue-600" : "font-medium"
+                  }`}
+                >
+                  {day.date.getDate()}
+                </div>
 
-                  <div className="flex-1 overflow-y-auto">
-                    {dayEvents.map((event) => {
-                      const eventDate = new Date(event.date);
-                      const channel = channels.find(
-                        (c) => c.id === event.channelId
-                      );
-
-                      return (
-                        <div
-                          key={event.id}
-                          className="mb-1 p-1 text-xs bg-blue-100 text-blue-800 rounded truncate cursor-pointer hover:bg-blue-200"
-                          title={event.description}
-                        >
-                          <div className="font-medium">
-                            {eventDate.toLocaleTimeString("ro-RO", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </div>
-                          <div className="truncate">{event.title}</div>
-                          {channel && (
-                            <div className="text-blue-600 truncate">
-                              #{channel.name}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {/* Buton de adăugare eveniment la ziua curentă dacă e ziua din luna curentă */}
-                    {day.isCurrentMonth &&
-                      onCreateEvent &&
-                      dayEvents.length === 0 && (
-                        <button
-                          onClick={onCreateEvent}
-                          className="w-full h-12 mt-2 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4 mr-1"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                            />
-                          </svg>
-                          <span className="text-xs">Adaugă</span>
-                        </button>
-                      )}
-                  </div>
+                <div className="flex-1 overflow-y-auto space-y-1">
+                  {dayEvents.slice(0, 3).map((event) => (
+                    <EventBadge
+                      key={event.id}
+                      event={event}
+                      channels={channels}
+                      onClick={() => setSelectedDate(day.date)}
+                    />
+                  ))}
+                  {dayEvents.length > 3 && (
+                    <div className="text-xs text-gray-500 text-center">
+                      +{dayEvents.length - 3} mai multe
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
+      </div>
 
-        {/* Upcoming events list */}
-        <div className="mt-8">
-          <h3 className="font-bold text-gray-800 mb-4">Evenimente apropiate</h3>
+      {/* Selected Date Events Panel */}
+      {selectedDate && (
+        <div className="border-t border-gray-200 p-4 bg-gray-50">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-semibold text-gray-800">
+              Evenimente pentru {selectedDate.toLocaleDateString("ro-RO")}
+            </h3>
+            {onCreateEvent && !selectedDate && (
+              <button
+                onClick={() => handleCreateEvent(selectedDate)}
+                className="px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded-md flex items-center gap-1"
+              >
+                <PlusIcon />
+                Adaugă eveniment
+              </button>
+            )}
+          </div>
 
-          {events
-            .filter((event) => new Date(event.date) >= new Date())
-            .sort(
-              (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-            )
-            .slice(0, 5)
-            .map((event) => {
-              const eventDate = new Date(event.date);
-              const channel = channels.find((c) => c.id === event.channelId);
-
-              // Calculate attendees
-              const attendees = event.attendees
-                .map((id) => members.find((m) => m.id === id))
-                .filter((member): member is Member => member !== undefined);
-
-              return (
-                <div
-                  key={event.id}
-                  className="bg-white border border-gray-200 rounded-lg p-4 mb-3 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex">
-                    <div className="mr-4 text-center">
-                      <div className="w-12 h-12 bg-blue-100 text-blue-800 rounded-lg flex flex-col items-center justify-center">
-                        <span className="text-sm font-bold">
-                          {eventDate.getDate()}
-                        </span>
-                        <span className="text-xs">
-                          {eventDate.toLocaleDateString("ro-RO", {
-                            month: "short",
-                          })}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">
-                        {event.title}
-                      </h4>
-                      <p className="text-sm text-gray-600 mb-2">
-                        {event.description}
-                      </p>
-                      <div className="flex justify-between items-center">
-                        <div className="text-xs text-gray-500">
-                          {eventDate.toLocaleTimeString("ro-RO", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}{" "}
-                          • {event.duration} min •
-                          {channel ? ` #${channel.name}` : ""}
-                        </div>
-
-                        <div className="flex -space-x-1">
-                          {attendees.slice(0, 3).map((attendee) => (
-                            <img
-                              key={attendee.id}
-                              src={
-                                attendee.avatar ||
-                                `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                  attendee.name
-                                )}&background=0D8ABC&color=fff`
-                              }
-                              alt={attendee.name}
-                              className="w-6 h-6 rounded-full border border-white"
-                            />
-                          ))}
-
-                          {attendees.length > 3 && (
-                            <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs border border-white">
-                              +{attendees.length - 3}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-          {events.filter((event) => new Date(event.date) >= new Date())
-            .length === 0 && (
-            <div className="text-center p-8 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-8 w-8 text-blue-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          {getEventsForDate(selectedDate).length > 0 ? (
+            <div className="space-y-3">
+              {getEventsForDate(selectedDate)
+                .sort(
+                  (a, b) =>
+                    new Date(a.date).getTime() - new Date(b.date).getTime()
+                )
+                .map((event) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    channels={channels}
+                    members={members}
                   />
-                </svg>
-              </div>
-              <p className="text-gray-600 mb-2">Niciun eveniment planificat</p>
-              <p className="text-gray-500 text-sm mb-4">
-                Nu există evenimente apropiate pentru această echipă.
-              </p>
-
+                ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 text-gray-500">
+              <p className="mb-2">Nu există evenimente în această zi</p>
               {onCreateEvent && (
                 <button
-                  onClick={onCreateEvent}
-                  className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 text-sm inline-flex items-center"
+                  onClick={() => handleCreateEvent(selectedDate)}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                    />
-                  </svg>
-                  Adaugă primul eveniment
+                  Adaugă un eveniment
                 </button>
               )}
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Helper Components
+const ChevronLeftIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className="h-5 w-5"
+    viewBox="0 0 20 20"
+    fill="currentColor"
+  >
+    <path
+      fillRule="evenodd"
+      d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+
+const ChevronRightIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className="h-5 w-5"
+    viewBox="0 0 20 20"
+    fill="currentColor"
+  >
+    <path
+      fillRule="evenodd"
+      d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className="h-4 w-4"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+    />
+  </svg>
+);
+
+const EventBadge = ({
+  event,
+  channels,
+  onClick,
+}: {
+  event: Event;
+  channels: Channel[];
+  onClick: () => void;
+}) => {
+  const eventDate = new Date(event.date);
+  const channel = channels.find((c) => c.id === event.channelId);
+
+  function formatTime(eventDate: Date): React.ReactNode {
+    throw new Error("Function not implemented.");
+  }
+
+  return (
+    <div
+      onClick={onClick}
+      className="text-xs p-1 bg-blue-50 text-blue-800 rounded truncate cursor-pointer hover:bg-blue-100 transition-colors"
+    >
+      <div className="font-medium truncate">{event.title}</div>
+      <div className="flex justify-between items-center">
+        <span className="text-blue-600">{formatTime(eventDate)}</span>
+        {channel && <span className="text-blue-500">#{channel.name}</span>}
+      </div>
+    </div>
+  );
+};
+
+const EventCard = ({
+  event,
+  channels,
+  members,
+}: {
+  event: Event;
+  channels: Channel[];
+  members: Member[];
+}) => {
+  const eventDate = new Date(event.date);
+  const channel = channels.find((c) => c.id === event.channelId);
+  const attendees = event.attendees
+    .map((id) => members.find((m) => m.id === id))
+    .filter((member): member is Member => member !== undefined);
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-start">
+        <div className="mr-3 flex-shrink-0">
+          <div className="w-10 h-10 bg-blue-50 text-blue-800 rounded flex flex-col items-center justify-center">
+            <span className="text-xs font-bold">
+              {eventDate.getHours()}:
+              {eventDate.getMinutes().toString().padStart(2, "0")}
+            </span>
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="font-medium text-gray-900 truncate">{event.title}</h4>
+          <p className="text-sm text-gray-600 truncate">{event.description}</p>
+          <div className="mt-2 flex items-center justify-between">
+            {channel && (
+              <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
+                #{channel.name}
+              </span>
+            )}
+            {attendees.length > 0 && (
+              <div className="flex -space-x-2">
+                {attendees.slice(0, 3).map((attendee) => (
+                  <img
+                    key={attendee.id}
+                    src={
+                      attendee.avatar ||
+                      `https://ui-avatars.com/api/?name=${attendee.name}&background=random`
+                    }
+                    alt={attendee.name}
+                    className="w-6 h-6 rounded-full border-2 border-white"
+                  />
+                ))}
+                {attendees.length > 3 && (
+                  <div className="w-6 h-6 rounded-full bg-gray-200 text-xs flex items-center justify-center border-2 border-white">
+                    +{attendees.length - 3}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

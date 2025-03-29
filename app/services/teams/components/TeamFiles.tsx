@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 
 interface TeamFilesProps {
-  teamId: number;
+  teamId: string;
   files: any[];
   channels: any[];
   members: any[];

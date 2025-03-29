@@ -173,6 +173,9 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
           id: (Date.now() + 1).toString(), // ID canal ca string
           name: "General",
           unreadCount: 0,
+          description: "",
+          isPrivate: false,
+          teamId: timestamp,
         },
       ],
     };

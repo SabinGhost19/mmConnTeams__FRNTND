@@ -1,90 +1,78 @@
-// components/TeamsLanding/CreateEventModal.tsx
-import React from "react";
-
-interface Member {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-  status: "online" | "busy" | "away" | "offline";
-  avatar?: string;
-}
-
-interface Channel {
-  id: string;
-  name: string;
-  unreadCount: number;
-}
+"use client";
+import React, { useState } from "react";
+import { UserTeam as Member } from "@/app/types/models_types/userType";
+import TeamMembersList from "./TeamMembersList"; // Importă noua componentă
+import Channel from "@/app/types/models_types/channel";
 
 interface NewEvent {
   title: string;
   description: string;
   date: string;
   duration: number;
-  channelId: string;
+  channelId: number;
   attendees: number[];
   teamId: string;
 }
 
 interface CreateEventModalProps {
   teamId: string;
-  channels: Channel[];
-  members: Member[];
+  channels?: Channel[];
   onClose: () => void;
   onCreateEvent: (event: NewEvent) => void;
 }
 
 const CreateEventModal: React.FC<CreateEventModalProps> = ({
   teamId,
-  channels,
-  members,
+  channels = [],
   onClose,
   onCreateEvent,
 }) => {
-  // Handler pentru submitere
+  const [selectedAttendees, setSelectedAttendees] = useState<number[]>([]);
+  const [activeTab, setActiveTab] = useState<"members" | "schedule">("members");
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Extrage valorile din formular
     const form = e.currentTarget;
     const formData = new FormData(form);
 
-    const title = formData.get("title") as string;
-    const description = formData.get("description") as string;
-    const channelId = Number(formData.get("channelId"));
-    const date = formData.get("date") as string;
-    const time = formData.get("time") as string;
-    const duration = Number(formData.get("duration"));
+    const title = formData.get("title")?.toString() || "";
+    const description = formData.get("description")?.toString() || "";
+    const channelId = Number(formData.get("channelId")) || 0;
+    const date = formData.get("date")?.toString() || "";
+    const time = formData.get("time")?.toString() || "12:00";
+    const duration = Number(formData.get("duration")) || 30;
 
-    // Convertim lista de participanți selectați
-    const attendees: string[] = [];
-    members.forEach((member) => {
-      if (formData.get(`attendee-${member.id}`)) {
-        attendees.push(member.id);
-      }
-    });
+    if (!title || !date || !time || channelId <= 0) {
+      console.error("Date invalide pentru eveniment");
+      return;
+    }
 
-    // Combinăm data și ora într-un string ISO
     const dateTimeISO = `${date}T${time}:00`;
 
-    // Creăm evenimentul
     onCreateEvent({
       title,
       description,
       date: dateTimeISO,
       channelId,
       duration,
-      attendees,
+      attendees: selectedAttendees,
       teamId,
     });
 
-    // Resetăm formularul
-    form.reset();
+    onClose();
+  };
+
+  // Handler pentru selectarea membrilor
+  const handleSelectMember = (memberId: number, isSelected: boolean) => {
+    setSelectedAttendees((prev) =>
+      isSelected ? [...prev, memberId] : prev.filter((id) => id !== memberId)
+    );
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-lg mx-4 overflow-hidden">
+      <div className="bg-white rounded-lg w-full max-w-2xl mx-4 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="font-bold text-lg text-gray-800">
             Programează un eveniment nou
@@ -113,15 +101,11 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
         <form className="p-6 space-y-4" onSubmit={handleSubmit}>
           {/* Titlu eveniment */}
           <div>
-            <label
-              htmlFor="title"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Titlu eveniment*
             </label>
             <input
               type="text"
-              id="title"
               name="title"
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -130,14 +114,10 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
           {/* Canal */}
           <div>
-            <label
-              htmlFor="channelId"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Canal*
             </label>
             <select
-              id="channelId"
               name="channelId"
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -152,14 +132,10 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
           {/* Descriere */}
           <div>
-            <label
-              htmlFor="description"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Descriere
             </label>
             <textarea
-              id="description"
               name="description"
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -169,15 +145,11 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
           {/* Data și ora */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label
-                htmlFor="date"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Data*
               </label>
               <input
                 type="date"
-                id="date"
                 name="date"
                 defaultValue={new Date().toISOString().split("T")[0]}
                 required
@@ -185,15 +157,11 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
               />
             </div>
             <div>
-              <label
-                htmlFor="time"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Ora*
               </label>
               <input
                 type="time"
-                id="time"
                 name="time"
                 defaultValue="12:00"
                 required
@@ -204,15 +172,11 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
           {/* Durata */}
           <div>
-            <label
-              htmlFor="duration"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Durata (minute)*
             </label>
             <input
               type="number"
-              id="duration"
               name="duration"
               defaultValue="30"
               min="5"
@@ -221,43 +185,52 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
             />
           </div>
 
-          {/* Participanți */}
+          {/* Tab-uri pentru membri/programare */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Participanți
-            </label>
-            <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2">
-              {members.map((member) => (
-                <div key={member.id} className="flex items-center py-1">
-                  <input
-                    type="checkbox"
-                    id={`attendee-${member.id}`}
-                    name={`attendee-${member.id}`}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label
-                    htmlFor={`attendee-${member.id}`}
-                    className="ml-2 flex items-center"
-                  >
-                    <img
-                      src={
-                        member.avatar ||
-                        `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                          member.name
-                        )}&background=0D8ABC&color=fff`
-                      }
-                      alt={member.name}
-                      className="w-6 h-6 rounded-full mr-2"
-                    />
-                    <span className="text-sm text-gray-700">{member.name}</span>
-                    {member.status === "online" && (
-                      <span className="ml-2 inline-block h-2 w-2 rounded-full bg-green-400"></span>
-                    )}
-                  </label>
-                </div>
-              ))}
+            <div className="border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8">
+                <button
+                  type="button"
+                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === "members"
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                  onClick={() => setActiveTab("members")}
+                >
+                  Participanți ({selectedAttendees.length})
+                </button>
+                <button
+                  type="button"
+                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === "schedule"
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                  onClick={() => setActiveTab("schedule")}
+                >
+                  Programare
+                </button>
+              </nav>
             </div>
           </div>
+
+          {/* Conținut tab-uri */}
+          {activeTab === "members" ? (
+            <div className="border border-gray-200 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+              <TeamMembersList
+                teamId={teamId}
+                onMemberSelect={handleSelectMember}
+                selectedMembers={selectedAttendees}
+              />
+            </div>
+          ) : (
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <p className="text-gray-500">
+                Opțiuni de programare vor fi adăugate aici...
+              </p>
+            </div>
+          )}
 
           <div className="mt-6 flex justify-end space-x-3">
             <button

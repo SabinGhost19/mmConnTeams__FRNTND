@@ -888,7 +888,6 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
           <CreateEventModal
             teamId={team.id}
             channels={team.channels}
-            members={teamMembers}
             onClose={() => setShowCreateEventModal(false)}
             onCreateEvent={handleCreateEvent}
           />

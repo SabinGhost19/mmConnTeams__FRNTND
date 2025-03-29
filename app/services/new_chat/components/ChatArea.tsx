@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FiSend, FiPaperclip, FiSmile } from "react-icons/fi";
 import EmojiPicker from "emoji-picker-react";
-
+import { UserTeam as User } from "@/app/types/models_types/userType";
 import Message from "./Message";
 
 interface MessageType {
@@ -18,16 +18,6 @@ interface MessageType {
   attachments: any[];
   reactions: any[];
   isRead: boolean;
-}
-
-interface User {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-  avatarUrl?: string;
-  status: string;
 }
 
 interface ChatAreaProps {
