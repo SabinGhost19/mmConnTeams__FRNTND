@@ -19,9 +19,14 @@ interface WebSocketClientReturn {
   sendMessage: (content: string, attachments?: any[]) => boolean;
   sendTyping: (isTyping: boolean) => void;
   addReaction: (messageId: string, reactionType: string) => boolean;
-  removeReaction: (messageId: string, reactionId: string) => boolean;
+  removeReaction: (
+    messageId: string,
+    reactionType: string,
+    reactionId: string
+  ) => boolean;
   reconnect: () => Socket | undefined;
   disconnect: () => void;
+  refreshMessages: () => void;
 }
 
 // WebSocketClient component
@@ -358,19 +363,30 @@ const WebSocketClient = ({
 
   // Remove a reaction
   const removeReaction = useCallback(
-    (messageId: string, reactionId: string) => {
+    (messageId: string, reactionId: string, reactionType: string) => {
       if (!isSocketReady()) return false;
 
       socketRef.current!.emit("remove-reaction", {
         messageId,
         reactionId,
         channelId: channelIdRef.current,
+        reactionType,
       });
 
       return true;
     },
     [isSocketReady]
   );
+  const refreshMessages = useCallback(() => {
+    if (!isSocketReady()) return;
+
+    console.log(
+      `Requesting message refresh for channel ${channelIdRef.current}`
+    );
+    socketRef.current!.emit("refresh-messages", {
+      channelId: channelIdRef.current,
+    });
+  }, [isSocketReady]);
 
   return {
     status,
@@ -380,6 +396,7 @@ const WebSocketClient = ({
     sendTyping,
     addReaction,
     removeReaction,
+    refreshMessages,
     reconnect: () => {
       hasConnectedRef.current = false;
       if (socketRef.current) {
