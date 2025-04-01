@@ -3,6 +3,7 @@ import { getAccessToken } from "@/app/lib/auth-utils";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Socket, io } from "socket.io-client";
 import { MessageDTO } from "./interface";
+import LoadingBox from "./LoadingBox";
 
 interface WebSocketClientProps {
   channelId?: string;
@@ -27,6 +28,7 @@ interface WebSocketClientReturn {
   reconnect: () => Socket | undefined;
   disconnect: () => void;
   refreshMessages: () => void;
+  uploadFile: (file: File, teamId: string) => Promise<any>;
 }
 
 // WebSocketClient component
@@ -170,6 +172,17 @@ const WebSocketClient = ({
       }
     });
 
+    // File upload notification
+    newSocket.on("file-uploaded", (data) => {
+      console.log("File upload notification received:", data);
+
+      // Here we could update the UI to show a notification
+      // or refresh the messages if needed
+
+      // We don't need to update messages manually as the file will be
+      // attached to a message which will be broadcast separately
+    });
+
     // Message sent confirmation
     newSocket.on("message-sent", (confirmation) => {
       console.log("Message sent confirmation:", confirmation);
@@ -177,13 +190,16 @@ const WebSocketClient = ({
 
     // Reaction updates
     newSocket.on("reaction-update", (reaction) => {
-      console.log("Reaction update:", reaction);
+      console.log("Reaction update received:", reaction);
 
       // Update messages with the new reaction using current ref
       const updatedMessages = messagesRef.current.map((msg) => {
         if (msg.id === reaction.messageId) {
           // For add reaction
           if (reaction.action === "add") {
+            console.log(
+              `Adding reaction to message ${msg.id}: ${reaction.reactionType}`
+            );
             return {
               ...msg,
               reactions: [...(msg.reactions || []), reaction],
@@ -191,6 +207,9 @@ const WebSocketClient = ({
           }
           // For remove reaction
           else if (reaction.action === "remove") {
+            console.log(
+              `Removing reaction from message ${msg.id}: ${reaction.reactionType} (ID: ${reaction.id})`
+            );
             return {
               ...msg,
               reactions: (msg.reactions || []).filter(
@@ -315,21 +334,86 @@ const WebSocketClient = ({
     );
   }, []);
 
-  // Send a message
+  // File upload function
+  const uploadFile = useCallback(async (file: File, teamId: string) => {
+    if (!channelIdRef.current) {
+      console.error("Channel ID not available for file upload");
+      return null;
+    }
+
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        setError("No JWT token found");
+        return null;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("team_id", teamId);
+      formData.append("channel_id", channelIdRef.current);
+
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+        }/api/files/upload`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to upload file: ${response.status}`);
+      }
+
+      const fileData = await response.json();
+
+      // Notify via websocket about new file attachment
+      if (socketRef.current?.connected) {
+        socketRef.current.emit("file-upload-complete", {
+          channelId: channelIdRef.current,
+          fileData: fileData,
+        });
+      }
+
+      return fileData;
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      setError("Failed to upload file. Please try again.");
+      return null;
+    }
+  }, []);
+
+  // Send message with optional attachments
   const sendMessage = useCallback(
     (content: string, attachments: any[] = []) => {
-      if (!isSocketReady() || !content) return false;
+      if (!socketRef.current || !socketRef.current.connected) {
+        console.error("Cannot send message - socket not connected");
+        return false;
+      }
 
-      socketRef.current!.emit("new-message", {
-        channelId: channelIdRef.current,
-        content,
-        attachments,
-        timestamp: new Date().toISOString(),
-      });
+      if (!channelIdRef.current) {
+        console.error("Cannot send message - no channel selected");
+        return false;
+      }
 
-      return true;
+      try {
+        socketRef.current.emit("new-message", {
+          channelId: channelIdRef.current,
+          content,
+          attachments,
+        });
+        return true;
+      } catch (err) {
+        console.error("Error sending message:", err);
+        return false;
+      }
     },
-    [isSocketReady]
+    []
   );
 
   // Send typing indicator
@@ -348,24 +432,37 @@ const WebSocketClient = ({
   // Add a reaction
   const addReaction = useCallback(
     (messageId: string, reactionType: string) => {
-      if (!isSocketReady()) return false;
+      if (!isSocketReady() || !channelIdRef.current) {
+        console.error("Cannot add reaction - socket not ready");
+        return false;
+      }
 
-      socketRef.current!.emit("add-reaction", {
-        messageId,
-        channelId: channelIdRef.current,
-        reactionType,
-      });
+      console.log(`Adding reaction ${reactionType} to message ${messageId}`);
 
-      return true;
+      try {
+        // Emit reaction to server
+        socketRef.current!.emit("add-reaction", {
+          messageId,
+          channelId: channelIdRef.current,
+          reactionType,
+        });
+        return true;
+      } catch (err) {
+        console.error("Error sending reaction:", err);
+        return false;
+      }
     },
     [isSocketReady]
   );
 
   // Remove a reaction
   const removeReaction = useCallback(
-    (messageId: string, reactionId: string, reactionType: string) => {
+    (messageId: string, reactionType: string, reactionId: string) => {
       if (!isSocketReady()) return false;
 
+      console.log(
+        `Removing reaction: ${reactionType} (ID: ${reactionId}) from message: ${messageId}`
+      );
       socketRef.current!.emit("remove-reaction", {
         messageId,
         reactionId,
@@ -377,16 +474,33 @@ const WebSocketClient = ({
     },
     [isSocketReady]
   );
+
+  // Fetch channel messages - with loading state
   const refreshMessages = useCallback(() => {
-    if (!isSocketReady()) return;
+    if (!socketRef.current || !channelIdRef.current) {
+      console.error("Cannot refresh messages - no connection or channel");
+      return;
+    }
 
     console.log(
-      `Requesting message refresh for channel ${channelIdRef.current}`
+      `Manually refreshing messages for channel ${channelIdRef.current}`
     );
-    socketRef.current!.emit("refresh-messages", {
+
+    // This will trigger the channel-history event handler
+    socketRef.current.emit("join-channel", {
       channelId: channelIdRef.current,
     });
-  }, [isSocketReady]);
+  }, []);
+
+  const reconnect = useCallback(() => {
+    console.log("Manually triggering reconnection");
+    hasConnectedRef.current = false;
+    setStatus("connecting");
+
+    // Show a loading state during manual reconnection
+    connectionAttemptsRef.current = 0;
+    return connect();
+  }, [connect]);
 
   return {
     status,
@@ -397,16 +511,8 @@ const WebSocketClient = ({
     addReaction,
     removeReaction,
     refreshMessages,
-    reconnect: () => {
-      hasConnectedRef.current = false;
-      if (socketRef.current) {
-        socketRef.current.removeAllListeners();
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-      connectionAttemptsRef.current = 0;
-      return connect();
-    },
+    uploadFile,
+    reconnect,
     disconnect: () => {
       if (socketRef.current) {
         socketRef.current.removeAllListeners();

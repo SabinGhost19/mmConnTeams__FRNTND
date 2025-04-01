@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import ChannelMessages from "./components/ChannelMessages";
 import { getAccessToken } from "@/app/lib/auth-utils";
 import { Team, Channel } from "./components/interface";
+import LoadingBox from "./components/LoadingBox";
 
 // Use a more NextJS friendly approach for styling
 const fadeInAnimation = `
@@ -67,6 +68,8 @@ const ChatPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [hoverTeam, setHoverTeam] = useState<string | null>(null);
   const [showTeamDetails, setShowTeamDetails] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const teamHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Refs to avoid dependency cycles and track state across renders
@@ -98,6 +101,27 @@ const ChatPage = () => {
 
   // In a real app, get this from authentication context
   const currentUserId = "current-user-id";
+
+  // Check for mobile screen on mount and window resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    // Initial check
+    checkMobile();
+
+    // Add resize listener
+    window.addEventListener("resize", checkMobile);
+
+    // Clean up
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Toggle mobile menu
+  const toggleMenu = () => {
+    setIsMenuOpen((prev) => !prev);
+  };
 
   // Fetch all teams for the current user - with no dependencies
   const fetchTeams = useCallback(async () => {
@@ -328,154 +352,187 @@ const ChatPage = () => {
     );
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Add CSS animations */}
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.3s ease-in-out;
-        }
-      `}</style>
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+      {/* Mobile menu toggle button */}
+      {isMobile && (
+        <button
+          onClick={toggleMenu}
+          className="absolute top-4 left-4 z-50 p-2 bg-white rounded-md shadow-md"
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d={
+                isMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"
+              }
+            />
+          </svg>
+        </button>
+      )}
 
-      {/* Teams and Channels Sidebar */}
-      <div className="w-72 bg-[#f0f2f5] border-r border-gray-200 overflow-y-auto flex flex-col">
-        <div className="px-4 py-3 bg-[#0d47a1] text-white">
-          <h2 className="text-xl font-semibold">Team Chat</h2>
-        </div>
+      {/* Sidebar Navigation */}
+      <div
+        className={`${
+          isMobile ? (isMenuOpen ? "block" : "hidden") : "block"
+        } w-64 bg-white border-r border-gray-200 overflow-y-auto`}
+      >
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <LoadingBox size={32} message="Loading teams..." />
+          </div>
+        ) : teams.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full p-4">
+            <div className="text-4xl mb-4">👋</div>
+            <p className="text-gray-700 text-center mb-2">
+              Welcome to Team Chat
+            </p>
+            <p className="text-gray-500 text-center text-sm">
+              You don't have any teams yet.
+              <br />
+              Create or join a team to start chatting.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="px-4 py-3 bg-[#0d47a1] text-white">
+              <h2 className="text-xl font-semibold">Team Chat</h2>
+            </div>
 
-        <div className="p-4 flex-1 overflow-y-auto">
-          <h3 className="uppercase text-xs font-semibold text-gray-500 tracking-wider mb-4 pl-2">
-            Teams & Channels
-          </h3>
-          <div className="space-y-4">
-            {teams.map((team) => (
-              <div key={team.id} className="space-y-1 relative mb-2">
-                <div
-                  className={`p-2 rounded-lg cursor-default transition-colors ${
-                    selectedTeam === team.id
-                      ? "bg-[#bbdefb] text-[#0d47a1] font-medium"
-                      : "text-[#111b21] hover:bg-[#e3f2fd]"
-                  }`}
-                  onMouseEnter={() => handleTeamHover(team.id, true)}
-                  onMouseLeave={() => handleTeamHover(team.id, false)}
-                >
-                  <div className="flex items-center">
+            <div className="p-4 flex-1 overflow-y-auto">
+              <h3 className="uppercase text-xs font-semibold text-gray-500 tracking-wider mb-4 pl-2">
+                Teams & Channels
+              </h3>
+              <div className="space-y-4">
+                {teams.map((team) => (
+                  <div key={team.id} className="space-y-1 relative mb-2">
                     <div
-                      className="h-8 w-8 rounded-full text-white flex items-center justify-center mr-3 text-sm font-medium"
-                      style={{ backgroundColor: getRandomColor(team.id) }}
-                    >
-                      {team.icon || team.name.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="font-medium">{team.name}</span>
-                    {team.unreadCount > 0 && (
-                      <span className="ml-auto bg-[#0d47a1] text-white rounded-full text-xs px-2 py-0.5">
-                        {team.unreadCount}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Team details popup */}
-                {showTeamDetails && hoverTeam === team.id && (
-                  <div
-                    className="fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-72 animate-fade-in"
-                    style={{
-                      left: "calc(15rem)",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                    }}
-                  >
-                    <div className="flex items-center mb-3">
-                      <div
-                        className="w-10 h-10 rounded-full text-white flex items-center justify-center font-bold mr-3"
-                        style={{ backgroundColor: getRandomColor(team.id) }}
-                      >
-                        {team.name.charAt(0).toUpperCase()}
-                      </div>
-                      <h3 className="font-bold text-lg text-gray-800">
-                        {team.name}
-                      </h3>
-                    </div>
-                    <div className="mb-3 text-sm text-gray-600 border-b border-gray-100 pb-3">
-                      <p className="flex items-center mb-1">
-                        <span className="mr-2">👥</span>
-                        <span>
-                          Members: {team.members ? team.members.length : "N/A"}
-                        </span>
-                      </p>
-                      <p className="flex items-center">
-                        <span className="mr-2">📅</span>
-                        <span>Created: {new Date().toLocaleDateString()}</span>
-                      </p>
-                    </div>
-                    <p className="text-sm text-gray-700">
-                      {team.description || "No description available"}
-                    </p>
-                  </div>
-                )}
-
-                <div className="ml-10 space-y-0.5 mt-1">
-                  {teamChannels[team.id]?.map((channel) => (
-                    <div
-                      key={channel.id}
-                      className={`p-2 rounded-lg cursor-pointer transition-colors ${
-                        selectedChannel === channel.id
-                          ? "bg-[#bbdefb] text-[#0d47a1]"
-                          : "hover:bg-[#e3f2fd] text-[#111b21]"
+                      className={`p-2 rounded-lg cursor-default transition-colors ${
+                        selectedTeam === team.id
+                          ? "bg-[#bbdefb] text-[#0d47a1] font-medium"
+                          : "text-[#111b21] hover:bg-[#e3f2fd]"
                       }`}
-                      onClick={() => handleChannelSelect(channel.id, team.id)}
+                      onMouseEnter={() => handleTeamHover(team.id, true)}
+                      onMouseLeave={() => handleTeamHover(team.id, false)}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">
-                          {channel.isPrivate ? "🔒" : "#"} {channel.name}
-                        </span>
-                        {channel.unreadCount > 0 && (
-                          <span className="bg-[#0d47a1] text-white rounded-full text-xs px-1.5 py-0.5">
-                            {channel.unreadCount}
+                      <div className="flex items-center">
+                        <div
+                          className="h-8 w-8 rounded-full text-white flex items-center justify-center mr-3 text-sm font-medium"
+                          style={{ backgroundColor: getRandomColor(team.id) }}
+                        >
+                          {team.icon || team.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="font-medium">{team.name}</span>
+                        {team.unreadCount > 0 && (
+                          <span className="ml-auto bg-[#0d47a1] text-white rounded-full text-xs px-2 py-0.5">
+                            {team.unreadCount}
                           </span>
                         )}
                       </div>
                     </div>
-                  ))}
-                  {teamChannels[team.id]?.length === 0 && (
-                    <div className="text-xs text-gray-400 p-2">
-                      No channels available
+
+                    {/* Team details popup */}
+                    {showTeamDetails && hoverTeam === team.id && (
+                      <div
+                        className="fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-72 animate-fade-in"
+                        style={{
+                          left: "calc(15rem)",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                        }}
+                      >
+                        <div className="flex items-center mb-3">
+                          <div
+                            className="w-10 h-10 rounded-full text-white flex items-center justify-center font-bold mr-3"
+                            style={{ backgroundColor: getRandomColor(team.id) }}
+                          >
+                            {team.name.charAt(0).toUpperCase()}
+                          </div>
+                          <h3 className="font-bold text-lg text-gray-800">
+                            {team.name}
+                          </h3>
+                        </div>
+                        <div className="mb-3 text-sm text-gray-600 border-b border-gray-100 pb-3">
+                          <p className="flex items-center mb-1">
+                            <span className="mr-2">👥</span>
+                            <span>
+                              Members:{" "}
+                              {team.members ? team.members.length : "N/A"}
+                            </span>
+                          </p>
+                          <p className="flex items-center">
+                            <span className="mr-2">📅</span>
+                            <span>
+                              Created: {new Date().toLocaleDateString()}
+                            </span>
+                          </p>
+                        </div>
+                        <p className="text-sm text-gray-700">
+                          {team.description || "No description available"}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="ml-10 space-y-0.5 mt-1">
+                      {teamChannels[team.id]?.map((channel) => (
+                        <div
+                          key={channel.id}
+                          className={`p-2 rounded-lg cursor-pointer transition-colors ${
+                            selectedChannel === channel.id
+                              ? "bg-[#bbdefb] text-[#0d47a1]"
+                              : "hover:bg-[#e3f2fd] text-[#111b21]"
+                          }`}
+                          onClick={() =>
+                            handleChannelSelect(channel.id, team.id)
+                          }
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">
+                              {channel.isPrivate ? "🔒" : "#"} {channel.name}
+                            </span>
+                            {channel.unreadCount > 0 && (
+                              <span className="bg-[#0d47a1] text-white rounded-full text-xs px-1.5 py-0.5">
+                                {channel.unreadCount}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {teamChannels[team.id]?.length === 0 && (
+                        <div className="text-xs text-gray-400 p-2">
+                          No channels available
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* User profile */}
+            <div className="p-3 border-t border-gray-300 bg-[#f0f2f5]">
+              <div className="flex items-center">
+                <div className="w-10 h-10 rounded-full bg-[#0d47a1] text-white flex items-center justify-center font-semibold mr-3">
+                  {currentUserId.slice(0, 1).toUpperCase()}
+                </div>
+                <div>
+                  <div className="text-sm font-medium">Current User</div>
+                  <div className="text-xs text-[#0d47a1]">Online</div>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* User profile */}
-        <div className="p-3 border-t border-gray-300 bg-[#f0f2f5]">
-          <div className="flex items-center">
-            <div className="w-10 h-10 rounded-full bg-[#0d47a1] text-white flex items-center justify-center font-semibold mr-3">
-              {currentUserId.slice(0, 1).toUpperCase()}
             </div>
-            <div>
-              <div className="text-sm font-medium">Current User</div>
-              <div className="text-xs text-[#0d47a1]">Online</div>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
-      {/* Chat Area */}
-      <div
-        className="flex-1 flex flex-col"
-        style={{
-          background: `linear-gradient(135deg, #e3f2fd 0%, #bbdefb 50%, #e0f7fa 100%)`,
-        }}
-      >
+      {/* Main chat area */}
+      <div className="flex-1 overflow-hidden flex flex-col">
         {selectedChannel ? (
           <>
             {/* Channel header */}
@@ -563,8 +620,8 @@ const ChatPage = () => {
                       />
                     </svg>
                     <div className="absolute right-0 top-10 bg-white rounded shadow-lg p-2 hidden group-hover:block z-20">
-                      <button
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-[#ffebee] hover:text-[#ef5350] rounded transition-colors flex items-center"
+                      <div
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-[#ffebee] hover:text-[#ef5350] rounded transition-colors flex items-center cursor-pointer"
                         onClick={() => {
                           if (
                             window.confirm(
@@ -607,7 +664,7 @@ const ChatPage = () => {
                           />
                         </svg>
                         Leave Channel
-                      </button>
+                      </div>
                     </div>
                   </button>
                 </div>
@@ -624,37 +681,41 @@ const ChatPage = () => {
               <ChannelMessages
                 channelId={selectedChannel}
                 currentUserId={currentUserId}
+                teamId={selectedTeam}
               />
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5]">
-            <div className="bg-white rounded-lg shadow-md p-8 max-w-md text-center">
-              <div className="w-20 h-20 bg-[#0d47a1] rounded-full flex items-center justify-center text-white mx-auto mb-4">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-10 w-10"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                  />
-                </svg>
+          <div className="flex-1 flex items-center justify-center bg-gray-50">
+            {isLoading ? (
+              <LoadingBox size={48} message="Loading chat..." />
+            ) : (
+              <div className="text-center p-8">
+                <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <svg
+                    className="w-10 h-10"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900">
+                  Select a channel to start chatting
+                </h3>
+                <p className="mt-2 text-sm text-gray-500">
+                  {teams.length > 0
+                    ? "Choose a channel from the sidebar to start a conversation"
+                    : "You don't have any teams yet. Create or join a team to start chatting."}
+                </p>
               </div>
-              <h2 className="text-xl font-bold mb-2">Welcome to Team Chat</h2>
-              <p className="text-gray-600 mb-6">
-                Select a channel from the sidebar to start chatting with your
-                team
-              </p>
-              <div className="text-sm text-gray-500">
-                <p>Stay connected with your team from anywhere</p>
-              </div>
-            </div>
+            )}
           </div>
         )}
       </div>
