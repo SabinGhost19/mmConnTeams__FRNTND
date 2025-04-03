@@ -24,6 +24,10 @@ export interface RegisterUserData extends Omit<User, "role"> {
 
   termsAccepted: boolean;
   privacyPolicyAccepted: boolean;
+
+  // Admin verification fields
+  adminCode?: string;
+  adminVerified?: boolean;
 }
 
 export interface RegisterResponse {

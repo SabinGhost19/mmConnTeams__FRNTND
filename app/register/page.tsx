@@ -28,6 +28,13 @@ const registerPage = () => {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyPolicyAccepted, setPrivacyPolicyAccepted] = useState(false);
   const [step, setStep] = useState(1);
+  // Add new states for admin verification
+  const [adminCode, setAdminCode] = useState("");
+  const [adminVerified, setAdminVerified] = useState(false);
+  const [isRequestingCode, setIsRequestingCode] = useState(false);
+  const [verificationError, setVerificationError] = useState("");
+  const [verificationSuccess, setVerificationSuccess] = useState("");
+  const [responseData, setResponseData] = useState<any>(null);
 
   useEffect(() => {
     console.log(`Current step: ${step}`);
@@ -76,6 +83,18 @@ const registerPage = () => {
         newErrors.confirmPassword = "Parolele nu coincid";
         isValid = false;
       }
+    } else if (currentStep === 1.5) {
+      // Validation for admin verification step
+      // Admin verification is handled separately in verifyAdminCode function
+      // We just check if the user has already been verified
+      if (role === ROLE.ADMIN && !adminVerified) {
+        // If admin verification is required but step is being skipped
+        // (this shouldn't happen in normal flow, but just in case)
+        if (adminCode.trim() === "") {
+          newErrors.adminCode = "Codul de administrator este obligatoriu";
+          isValid = false;
+        }
+      }
     } else if (currentStep === 2) {
       if (!institution.trim()) {
         newErrors.institution = "Instituția este obligatorie";
@@ -114,12 +133,133 @@ const registerPage = () => {
 
   const handleNext = () => {
     if (validateStep(step)) {
-      setStep(step + 1);
+      // If user selected ADMIN role and is on first step, go to admin verification step
+      if (step === 1 && role === ROLE.ADMIN) {
+        setStep(1.5); // Use 1.5 as the admin verification step
+      } else {
+        setStep(step + 1);
+      }
     }
   };
 
   const handlePrevious = () => {
-    setStep(step - 1);
+    // If on admin verification step, go back to step 1
+    if (step === 1.5) {
+      setStep(1);
+    } else {
+      setStep(step - 1);
+    }
+  };
+
+  // Function to request admin verification code
+  const requestAdminCode = async () => {
+    setIsRequestingCode(true);
+    setVerificationError("");
+    setVerificationSuccess("");
+    setResponseData(null);
+
+    try {
+      const response = await fetch("http://localhost:8085/index.php", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: firstName + " " + lastName,
+          email: email,
+        }),
+      });
+      console.log("Requesting code...to php");
+      console.log(response);
+      const data = response.ok ? await response.json() : null;
+      setResponseData(data);
+
+      if (!response.ok) {
+        let errorMessage = "Failed to request verification code";
+
+        if (response.status === 400) {
+          errorMessage = "Date invalide. Verificați datele de înregistrare.";
+        } else if (response.status === 500) {
+          errorMessage = "Eroare de server. Încercați din nou mai târziu.";
+        } else if (response.status === 404) {
+          errorMessage = "Serviciul de verificare nu este disponibil.";
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      // Code request successful
+      setIsRequestingCode(false);
+      setVerificationSuccess(
+        "Cerere de cod procesată cu succes! Veți primi codul prin email în curând." +
+          (data?.message ? " " + data.message : "")
+      );
+    } catch (error) {
+      setVerificationError(
+        "Eroare la solicitarea codului: " +
+          (error instanceof Error ? error.message : "Eroare necunoscută")
+      );
+      setIsRequestingCode(false);
+    }
+  };
+
+  // Function to verify admin code
+  const verifyAdminCode = async () => {
+    setIsRequestingCode(true);
+    setVerificationError("");
+    setVerificationSuccess("");
+    setResponseData(null);
+
+    try {
+      const response = await fetch(
+        "http://localhost:8080/api/auth/admin-code/verify",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            code: adminCode,
+          }),
+        }
+      );
+
+      const data = response.ok ? await response.json() : null;
+      setResponseData(data);
+
+      if (!response.ok) {
+        let errorMessage = "Cod de verificare invalid";
+
+        if (response.status === 400) {
+          errorMessage = "Codul introdus este invalid sau a expirat.";
+        } else if (response.status === 404) {
+          errorMessage = "Codul nu a fost găsit.";
+        } else if (response.status === 500) {
+          errorMessage = "Eroare de server la verificarea codului.";
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      // Code verification successful
+      setAdminVerified(true);
+      setVerificationSuccess(
+        "Cod verificat cu succes! Puteți continua înregistrarea." +
+          (data?.message ? " " + data.message : "")
+      );
+      setIsRequestingCode(false);
+
+      // Wait a moment to show success message before proceeding
+      setTimeout(() => {
+        setStep(2); // Proceed to next step
+      }, 1500);
+    } catch (error) {
+      setVerificationError(
+        "Eroare la verificarea codului: " +
+          (error instanceof Error ? error.message : "Eroare necunoscută")
+      );
+      setIsRequestingCode(false);
+    }
   };
 
   // Trimiterea formularului
@@ -152,6 +292,9 @@ const registerPage = () => {
       },
       termsAccepted,
       privacyPolicyAccepted,
+      // Include admin verification details if user is admin
+      adminCode: role === ROLE.ADMIN ? adminCode : undefined,
+      adminVerified: role === ROLE.ADMIN ? adminVerified : undefined,
     };
 
     registerMutation.mutate(userData, {
@@ -188,7 +331,7 @@ const registerPage = () => {
                 <div key={stepNumber} className="flex flex-col items-center">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      step >= stepNumber
+                      step >= stepNumber || (step === 1.5 && stepNumber === 1)
                         ? "bg-blue-600 text-white"
                         : "bg-gray-200 text-gray-600"
                     }`}
@@ -208,7 +351,9 @@ const registerPage = () => {
             <div className="mt-2 h-1 w-full bg-gray-200">
               <div
                 className="h-full bg-blue-600 transition-all duration-300"
-                style={{ width: `${((step - 1) / 2) * 100}%` }}
+                style={{
+                  width: `${step === 1.5 ? 25 : ((step - 1) / 2) * 100}%`,
+                }}
               ></div>
             </div>
           </div>
@@ -349,7 +494,200 @@ const registerPage = () => {
                   >
                     <option value={ROLE.STUDENT}>Student</option>
                     <option value={ROLE.TEACHER}>Profesor</option>
+                    <option value={ROLE.ADMIN}>Administrator</option>
                   </select>
+                </div>
+              </div>
+            )}
+
+            {/* Admin Verification Step */}
+            {step === 1.5 && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Verificare Administrator
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Pentru a continua cu înregistrarea ca administrator, aveți
+                    nevoie de un cod de verificare.
+                  </p>
+
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={requestAdminCode}
+                      disabled={isRequestingCode}
+                      className="inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      {isRequestingCode ? (
+                        <>
+                          <svg
+                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          Se procesează...
+                        </>
+                      ) : (
+                        "Solicită cod de verificare"
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="mt-4">
+                    <label
+                      htmlFor="adminCode"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Cod de verificare
+                    </label>
+                    <input
+                      id="adminCode"
+                      name="adminCode"
+                      type="text"
+                      value={adminCode}
+                      onChange={(e) => setAdminCode(e.target.value)}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Introduceți codul primit"
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={verifyAdminCode}
+                      disabled={isRequestingCode || !adminCode.trim()}
+                      className="inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    >
+                      {isRequestingCode ? (
+                        <>
+                          <svg
+                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          Se verifică...
+                        </>
+                      ) : (
+                        "Verifică codul"
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="p-3 border border-gray-200 rounded-md bg-gray-50">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">
+                        Starea procesului:
+                      </h4>
+                      <ul className="space-y-1">
+                        <li className="flex items-center text-sm">
+                          <span
+                            className={`inline-block w-4 h-4 mr-2 rounded-full ${
+                              isRequestingCode
+                                ? "bg-yellow-400"
+                                : verificationSuccess
+                                ? "bg-green-500"
+                                : verificationError
+                                ? "bg-red-500"
+                                : "bg-gray-300"
+                            }`}
+                          ></span>
+                          Solicitare cod:{" "}
+                          {isRequestingCode
+                            ? "În desfășurare"
+                            : verificationSuccess
+                            ? "Completat"
+                            : verificationError
+                            ? "Eroare"
+                            : "Neînceput"}
+                        </li>
+                        <li className="flex items-center text-sm">
+                          <span
+                            className={`inline-block w-4 h-4 mr-2 rounded-full ${
+                              adminVerified ? "bg-green-500" : "bg-gray-300"
+                            }`}
+                          ></span>
+                          Verificare administrator:{" "}
+                          {adminVerified ? "Completat" : "În așteptare"}
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Display server response data if available */}
+                  {responseData && (
+                    <div className="mt-4">
+                      <div className="p-3 border border-gray-200 rounded-md bg-gray-50">
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">
+                          Răspuns server:
+                        </h4>
+                        <div className="text-xs overflow-auto max-h-32 bg-gray-100 p-2 rounded font-mono">
+                          {JSON.stringify(responseData, null, 2)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {verificationSuccess && (
+                    <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-md">
+                      <p className="text-sm">{verificationSuccess}</p>
+                    </div>
+                  )}
+
+                  {verificationError && (
+                    <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-md">
+                      <p className="text-sm">{verificationError}</p>
+                    </div>
+                  )}
+
+                  {adminVerified && (
+                    <div className="mt-4 flex items-center">
+                      <svg
+                        className="w-5 h-5 text-green-500 mr-2"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <span className="text-green-700 font-medium">
+                        Administrator verificat
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
