@@ -16,9 +16,9 @@ export interface Notification {
 interface NotificationModalProps {
   notifications: Notification[];
   onClose: () => void;
-  onMarkAsRead: (notificationId: number) => void;
-  onJoinTeam: (teamId: number, notificationId: number) => void;
-  onRejectTeamInvite: (teamId: number, notificationId: number) => void;
+  onMarkAsRead: (notificationId: string) => void;
+  onJoinTeam: (teamId: string, notificationId: string) => void;
+  onRejectTeamInvite: (teamId: string, notificationId: string) => void;
 }
 
 const NotificationModal: React.FC<NotificationModalProps> = ({

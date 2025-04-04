@@ -15,6 +15,9 @@ import File from "@/app/types/models_types/file";
 import Channel from "@/app/types/models_types/channel";
 import ChannelHeader from "../chat/components/ChatHeader";
 import ChatArea from "../chat/components/ChatArea";
+import { NewEventWithAttendees } from "@/app/types/models_types/eventTypes";
+import { createEvent } from "@/app/services/api/eventService";
+import { createBackwardCompatibleUser } from "@/app/lib/userUtils";
 
 interface TeamsLandingPageProps {
   initialTeams: Team[];
@@ -116,10 +119,13 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
 
       setSelectedTeam(team);
       setCurrentView(ViewType.TEAM_DETAIL);
-      setSelectedChannel(team.channels[0] || null);
+      setSelectedChannel(team?.channels?.[0] || null);
 
       const members = await fetchTeamMembers(teamId);
-      setUsers(members);
+      const backwardCompatibleMembers = members.map(
+        createBackwardCompatibleUser
+      );
+      setUsers(backwardCompatibleMembers);
     } catch (error) {
       console.error("Error loading team:", error);
     } finally {
@@ -130,9 +136,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
   const handleSelectChannel = (channelId: string) => {
     if (!selectedTeam) return;
     //request -------------------------
-    //depinde daca facem sus cum trebuie si luam
-    //si channels
-    const channel = selectedTeam.channels.find(
+    const channel = selectedTeam?.channels?.find(
       (c: Channel) => c.id === channelId
     );
     if (channel) {
@@ -151,7 +155,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
     if (team) {
       setSelectedTeam(team);
 
-      const channel = team.channels.find((c: Channel) => c.id === channelId);
+      const channel = team.channels?.find((c: Channel) => c.id === channelId);
       if (channel) {
         setSelectedChannel(channel);
         setCurrentView(ViewType.CHANNEL);
@@ -163,14 +167,15 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
     // Folosim Date.now().toString() pentru ID-uri unice temporare
     const timestamp = Date.now().toString();
 
-    const newTeam: Team = {
-      id: timestamp, // ID-ul echipei ca string
+    // First create as unknown then cast to Team
+    const newTeam = {
+      id: timestamp,
       ...teamData,
-      members: ["1"], // Array de string-uri (ID-uri utilizator)
+      members: ["1"],
       unreadCount: 0,
       channels: [
         {
-          id: (Date.now() + 1).toString(), // ID canal ca string
+          id: (Date.now() + 1).toString(),
           name: "General",
           unreadCount: 0,
           description: "",
@@ -178,7 +183,16 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
           teamId: timestamp,
         },
       ],
-    };
+      // Add missing required properties with default values
+      iconUrl: "",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messageNr: 0,
+      messageLastTime: new Date().toISOString(),
+      isActive: true,
+      reactionNr: 0,
+      channelNr: 1,
+    } as unknown as Team;
 
     // Aici ar trebui să faci request POST către backend
     setTeams([...teams, newTeam]);
@@ -187,7 +201,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
 
     // Selectăm automat noua echipă
     setSelectedTeam(newTeam);
-    setSelectedChannel(newTeam.channels[0]);
+    setSelectedChannel(newTeam.channels?.[0] || null);
     setCurrentView(ViewType.TEAM_DETAIL);
   };
 
@@ -207,7 +221,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
         if (team.id === selectedTeam.id) {
           return {
             ...team,
-            channels: [...team.channels, newChannel],
+            channels: [...(team.channels || []), newChannel],
           };
         }
         return team;
@@ -216,7 +230,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
       setTeams(updatedTeams);
       setSelectedTeam({
         ...selectedTeam,
-        channels: [...selectedTeam.channels, newChannel],
+        channels: [...(selectedTeam.channels || []), newChannel],
       });
       setSelectedChannel(newChannel);
       setCurrentView(ViewType.CHANNEL);
@@ -320,6 +334,31 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
   };
   //--------------------------------------------
 
+  const handleCreateEvent = async (eventData: NewEventWithAttendees) => {
+    try {
+      console.log(
+        "Creating event with data:",
+        JSON.stringify(eventData, null, 2)
+      );
+      console.log("Event title:", eventData.event.title);
+      console.log("Event description:", eventData.event.description);
+      console.log("Event date:", eventData.event.eventDate);
+
+      const response = await createEvent(eventData);
+      console.log("Event creation response:", response);
+
+      // Add the new event to the events state
+      const newEvent = response.event;
+      setEvents([...events, newEvent]);
+
+      // Show success notification
+      alert("Evenimentul a fost creat cu succes!");
+    } catch (error) {
+      console.error("Error creating event:", error);
+      alert("A apărut o eroare la crearea evenimentului.");
+    }
+  };
+
   const renderMainContent = () => {
     switch (currentView) {
       case ViewType.TEAM_DETAIL:
@@ -328,8 +367,12 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
           <TeamDetailView
             team={selectedTeam}
             users={users}
-            events={events.filter((e) => e.teamId === selectedTeam.id)}
-            files={files.filter((f) => f.teamId === selectedTeam.id)}
+            events={(events || []).filter(
+              (e) => e && e.teamId && e.teamId === selectedTeam.id
+            )}
+            files={(files || []).filter(
+              (f) => f && f.teamId && f.teamId === selectedTeam.id
+            )}
             selectedView={selectedView}
             onChangeView={setSelectedView}
             onStartChat={handleStartChat}
@@ -337,6 +380,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
             onCreateChannel={() => setShowCreateChannelModal(true)}
             onInviteUser={() => setShowInviteUserModal(true)}
             onSelectChannel={handleSelectChannel}
+            onCreateEvent={handleCreateEvent}
             onEnterTeamById={onEnterTeamById}
           />
         );
@@ -409,11 +453,15 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
               >
                 ← Înapoi
               </button>
-              <h2 className="text-2xl font-bold">Chat cu {chatUser.name}</h2>
+              <h2 className="text-2xl font-bold">
+                Chat cu {chatUser.firstName} {chatUser.lastName}
+              </h2>
             </div>
             {/* Aici ar veni componenta de chat */}
             <div className="bg-gray-100 p-4 rounded">
-              <p>Fereastra de chat cu {chatUser.name}</p>
+              <p>
+                Fereastra de chat cu {chatUser.firstName} {chatUser.lastName}
+              </p>
               {/* Componenta de chat ar veni aici */}
             </div>
           </div>

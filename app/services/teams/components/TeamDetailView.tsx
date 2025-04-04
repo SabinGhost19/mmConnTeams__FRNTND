@@ -12,16 +12,8 @@ import { UserTeam as Member } from "@/app/types/models_types/userType";
 import Team from "@/app/types/models_types/team";
 import Event from "@/app/types/models_types/event";
 import File from "@/app/types/models_types/file";
-
-interface NewEvent {
-  title: string;
-  description: string;
-  date: string;
-  duration: number;
-  channelId: number;
-  attendees: number[];
-  teamId: string;
-}
+import { NewEventWithAttendees } from "@/app/types/models_types/eventTypes";
+import { getFullName, getAvatarUrl } from "@/app/lib/userUtils";
 
 // Tipuri de vizualizare posibile
 type ViewType = "overview" | "channels" | "members" | "events" | "files";
@@ -38,8 +30,8 @@ interface TeamDetailViewProps {
   onCreateChannel: () => void;
   onInviteUser: () => void;
   onSelectChannel?: (channelId: string) => void;
-  onCreateEvent?: (event: NewEvent) => void;
-  onEnterTeamById?: (teamId: string) => void;
+  onCreateEvent?: (event: NewEventWithAttendees) => void;
+  onEnterTeamById?: (teamId: string) => Promise<any>;
   onFetchNotifications?: () => Promise<Notification[]>;
   onMarkNotificationAsRead?: (notificationId: string) => Promise<void>;
   onJoinTeam?: (teamId: string, notificationId: string) => Promise<void>;
@@ -196,31 +188,28 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
   console.log("Modal state:", showCreateEventModal);
 
   const teamMembers = Array.isArray(users)
-    ? users.filter((user) => team.members.includes(user.id))
+    ? users.filter((user) => team.members?.includes(user.id) || false)
     : [];
 
   const onlineMembers = Array.isArray(teamMembers)
     ? teamMembers.filter((user) => user.status === "online")
     : [];
 
-  const totalChannels = team.channels.length;
+  const totalChannels = team.channels?.length || 0;
   const totalFiles = files.length;
   const upcomingEvents = events.filter(
     (event) => new Date(event.date) > new Date()
   ).length;
 
   // Sortează canalele după numărul de mesaje necitite
-  const sortedChannels = [...team.channels].sort(
+  const sortedChannels = [...(team.channels || [])].sort(
     (a, b) => b.unreadCount - a.unreadCount
   );
 
   // Handler pentru crearea unui eveniment nou
-  const handleCreateEvent = (newEvent: NewEvent) => {
+  const handleCreateEvent = (eventData: NewEventWithAttendees) => {
     if (onCreateEvent) {
-      onCreateEvent({
-        ...newEvent,
-        teamId: team.id,
-      });
+      onCreateEvent(eventData);
     }
     setShowCreateEventModal(false);
   };
@@ -664,20 +653,19 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                   >
                     <div className="relative">
                       <img
-                        src={
-                          member.avatar ||
-                          `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                            member.name
-                          )}&background=0D8ABC&color=fff`
-                        }
-                        alt={member.name}
+                        src={getAvatarUrl(member)}
+                        alt={getFullName(member)}
                         className="w-10 h-10 rounded-full"
                       />
                       <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white bg-green-400"></span>
                     </div>
                     <div className="ml-3">
-                      <p className="font-medium text-gray-900">{member.name}</p>
-                      <p className="text-sm text-gray-500">{member.role}</p>
+                      <p className="font-medium text-gray-900">
+                        {getFullName(member)}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {member.department || "Fără departament"}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -862,10 +850,10 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
               </button>
             </div>
             <TeamCalendar
-              teamId={team.id}
+              teamId={team.id.toString()}
               events={events}
               members={teamMembers}
-              channels={team.channels}
+              channels={team.channels || []}
               onCreateEvent={openCreateEventModal}
             />
           </div>
@@ -876,7 +864,7 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
           <TeamFiles
             teamId={team.id}
             files={files}
-            channels={team.channels}
+            channels={team.channels || []}
             members={teamMembers}
           />
         )}
@@ -884,14 +872,13 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
 
       {/* Modal pentru crearea unui eveniment */}
       {showCreateEventModal && (
-        <div className="z-50">
-          <CreateEventModal
-            teamId={team.id}
-            channels={team.channels}
-            onClose={() => setShowCreateEventModal(false)}
-            onCreateEvent={handleCreateEvent}
-          />
-        </div>
+        <CreateEventModal
+          teamId={team.id}
+          userId={users[0]?.id || ""} // Current user ID
+          channels={team.channels || []}
+          onClose={() => setShowCreateEventModal(false)}
+          onCreateEvent={handleCreateEvent}
+        />
       )}
 
       {/* Modal pentru intrarea într-o echipă */}

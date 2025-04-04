@@ -2,10 +2,11 @@
 "use client";
 
 import React from "react";
+import { getFullName, getAvatarUrl } from "@/app/lib/userUtils";
 
 interface ActiveUsersProps {
   users: any[];
-  onStartChat: (userId: number) => void;
+  onStartChat: (userId: string) => void;
 }
 
 const ActiveUsers: React.FC<ActiveUsersProps> = ({ users, onStartChat }) => {
@@ -26,20 +27,15 @@ const ActiveUsers: React.FC<ActiveUsersProps> = ({ users, onStartChat }) => {
               <div className="flex items-center space-x-3">
                 <div className="relative">
                   <img
-                    src={
-                      user.avatar ||
-                      `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                        user.name
-                      )}&background=0D8ABC&color=fff`
-                    }
-                    alt={user.name}
+                    src={getAvatarUrl(user)}
+                    alt={getFullName(user)}
                     className="w-10 h-10 rounded-full"
                   />
                   <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white bg-green-400"></span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">
-                    {user.name}
+                    {getFullName(user)}
                   </p>
                   <p className="text-xs text-gray-500 truncate">{user.role}</p>
                 </div>

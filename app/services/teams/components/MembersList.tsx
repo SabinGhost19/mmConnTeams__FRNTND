@@ -266,7 +266,7 @@ const MemberCard: React.FC<MemberCardProps> = ({
         <div className="relative">
           <img
             src={
-              member.avatar ||
+              member.profileImage ||
               `https://ui-avatars.com/api/?name=${encodeURIComponent(
                 fullName
               )}&background=0D8ABC&color=fff`

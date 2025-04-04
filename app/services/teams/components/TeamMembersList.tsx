@@ -2,11 +2,12 @@
 import React, { useState, useEffect } from "react";
 import { UserTeam } from "@/app/types/models_types/userType";
 import { FiSearch, FiUser } from "react-icons/fi";
+import { api } from "@/app/lib/api";
 
 interface TeamMembersListProps {
   teamId: string;
-  onMemberSelect?: (memberId: number, isSelected: boolean) => void;
-  selectedMembers?: number[];
+  onMemberSelect?: (memberId: string, isSelected: boolean) => void;
+  selectedMembers?: string[];
 }
 
 const TeamMembersList: React.FC<TeamMembersListProps> = ({
@@ -23,12 +24,24 @@ const TeamMembersList: React.FC<TeamMembersListProps> = ({
     const fetchTeamMembers = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/teams/${teamId}/members`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch team members");
+        const response = await api.get(`/api/teams/${teamId}/members`);
+
+        // Validate response data
+        if (Array.isArray(response.data)) {
+          // Filter out any invalid member objects
+          const validMembers = response.data.filter(
+            (member) =>
+              member &&
+              typeof member === "object" &&
+              member.id &&
+              (member.firstName || member.lastName || member.email)
+          );
+          setMembers(validMembers);
+        } else {
+          console.error("Invalid response format:", response.data);
+          setMembers([]);
+          setError("Invalid data received from server");
         }
-        const data = await response.json();
-        setMembers(data);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "An unknown error occurred"
@@ -58,18 +71,33 @@ const TeamMembersList: React.FC<TeamMembersListProps> = ({
   };
 
   const filteredMembers = members.filter((member) => {
+    if (!member) return false;
+
     const searchTerm = searchQuery.toLowerCase();
+    // Create fullName from firstName and lastName
+    const fullName = `${member.firstName || ""} ${
+      member.lastName || ""
+    }`.trim();
+
     return (
-      member.name.toLowerCase().includes(searchTerm) ||
-      member.email.toLowerCase().includes(searchTerm) ||
-      (member.department &&
-        member.department.toLowerCase().includes(searchTerm))
+      fullName.toLowerCase().includes(searchTerm) ||
+      (member.email?.toLowerCase() || "").includes(searchTerm) ||
+      (member.department?.toLowerCase() || "").includes(searchTerm)
     );
   });
 
+  // Helper function to get full name
+  const getFullName = (member: UserTeam) => {
+    if (!member) return "";
+    return (
+      `${member.firstName || ""} ${member.lastName || ""}`.trim() ||
+      "Membru nou"
+    );
+  };
+
   const handleToggleMember = (member: UserTeam) => {
     if (onMemberSelect) {
-      const memberId = Number(member.id);
+      const memberId = member.id.toString();
       const isCurrentlySelected = selectedMembers.includes(memberId);
       onMemberSelect(memberId, !isCurrentlySelected);
     }
@@ -138,7 +166,8 @@ const TeamMembersList: React.FC<TeamMembersListProps> = ({
       <div className="divide-y divide-gray-200">
         {filteredMembers.length > 0 ? (
           filteredMembers.map((member) => {
-            const isSelected = selectedMembers.includes(Number(member.id));
+            if (!member || !member.id) return null;
+            const isSelected = selectedMembers.includes(member.id.toString());
 
             return (
               <div
@@ -149,19 +178,19 @@ const TeamMembersList: React.FC<TeamMembersListProps> = ({
                 onClick={() => handleToggleMember(member)}
               >
                 <div className="flex items-center space-x-4">
-                  {member.avatar ? (
+                  {member.profileImage ? (
                     <img
                       className="h-10 w-10 rounded-full object-cover"
-                      src={member.avatar}
-                      alt={member.name}
+                      src={member.profileImage}
+                      alt={getFullName(member)}
                     />
                   ) : (
                     <div
                       className={`flex items-center justify-center h-10 w-10 rounded-full ${getRandomColor(
-                        member.name
+                        getFullName(member)
                       )} text-white font-medium`}
                     >
-                      {member.name
+                      {getFullName(member)
                         .split(" ")
                         .map((n) => n[0])
                         .join("")
@@ -172,7 +201,7 @@ const TeamMembersList: React.FC<TeamMembersListProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2">
                       <p className="text-sm font-medium text-gray-900 truncate">
-                        {member.name}
+                        {getFullName(member)}
                       </p>
                       {member.status === "online" && (
                         <span className="inline-block h-2 w-2 rounded-full bg-green-400"></span>

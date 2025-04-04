@@ -1,6 +1,7 @@
 // components/TeamsLanding/TeamFiles.tsx
 "use client";
 import React, { useState } from "react";
+import { getFullName, getAvatarUrl } from "@/app/lib/userUtils";
 
 interface TeamFilesProps {
   teamId: string;
@@ -359,18 +360,13 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
                         <div className="flex-shrink-0 h-8 w-8">
                           <img
                             className="h-8 w-8 rounded-full"
-                            src={
-                              uploader?.avatar ||
-                              `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                uploader?.name || "Unknown"
-                              )}&background=0D8ABC&color=fff`
-                            }
+                            src={getAvatarUrl(uploader)}
                             alt=""
                           />
                         </div>
                         <div className="ml-3">
                           <div className="text-sm font-medium text-gray-900">
-                            {uploader?.name || "Utilizator necunoscut"}
+                            {getFullName(uploader)}
                           </div>
                         </div>
                       </div>

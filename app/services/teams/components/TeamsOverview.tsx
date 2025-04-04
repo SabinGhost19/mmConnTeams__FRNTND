@@ -5,15 +5,13 @@ import ActiveUsers from "./ActiveUsers";
 import Channel from "@/app/types/models_types/channel";
 import { UserTeam as User } from "@/app/types/models_types/userType";
 import Team from "@/app/types/models_types/team";
-import Event from "@/app/types/models_types/event";
 import { api as axios } from "@/app/lib/api";
-import { toASCII } from "punycode";
 import EnterTeamModal from "./EnterTeamModal";
+import { getFullName, getAvatarUrl } from "@/app/lib/userUtils";
 
 interface TeamsOverviewProps {
   teams: Team[];
   users: User[];
-  events: Event[];
   onSelectTeam: (teamId: string) => void;
   onStartChat: (userId: string) => void;
   onJoinChannel: (teamId: string, channelId: string) => void;
@@ -24,7 +22,6 @@ interface TeamsOverviewProps {
 const TeamsOverview: React.FC<TeamsOverviewProps> = ({
   teams,
   users,
-  events,
   onSelectTeam,
   onStartChat,
   onJoinChannel,
@@ -89,10 +86,6 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
   };
 
   const onlineUsers = users.filter((user) => user.status === "online");
-
-  const sortedEvents = [...events]
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, 5);
 
   return (
     <div className="flex flex-col h-full overflow-auto">
@@ -163,7 +156,9 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
                 >
                   <div
                     className={`h-2 ${
-                      team.unreadCount > 0 ? "bg-blue-600" : "bg-gray-200"
+                      team.unreadCount && team.unreadCount > 0
+                        ? "bg-blue-600"
+                        : "bg-gray-200"
                     }`}
                   ></div>
                   <div className="p-5">
@@ -177,7 +172,7 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
                           {team.channels ? team.channels.length : 0} canale
                         </p>
                       </div>
-                      {team.unreadCount > 0 && (
+                      {team.unreadCount && team.unreadCount > 0 && (
                         <span className="ml-auto bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
                           {team.unreadCount}
                         </span>
@@ -198,13 +193,8 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
                             return user ? (
                               <img
                                 key={user.id}
-                                src={
-                                  user.avatar ||
-                                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                    user.name
-                                  )}&background=0D8ABC&color=fff`
-                                }
-                                alt={user.name}
+                                src={getAvatarUrl(user)}
+                                alt={getFullName(user)}
                                 className="w-8 h-8 rounded-full border-2 border-white"
                               />
                             ) : null;
@@ -248,7 +238,7 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
           )}
 
           <div className="lg:w-80 space-y-6">
-            <UpcomingEvents events={sortedEvents} teams={teams} users={users} />
+            <UpcomingEvents teams={teams} users={users} />
             <ActiveUsers users={onlineUsers} onStartChat={onStartChat} />
           </div>
         </div>

@@ -1,9 +1,30 @@
 // components/TeamsLanding/TeamCalendar.tsx
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Channel from "@/app/types/models_types/channel";
 import { UserTeam as Member } from "@/app/types/models_types/userType";
-import Event from "@/app/types/models_types/event";
+import { api } from "@/app/lib/api";
+
+// Updated Event type to match the one in UpcomingEvents
+interface EventAttendee {
+  id: string;
+  userId: string;
+  eventId: string;
+}
+
+interface Event {
+  id: string;
+  teamId: string;
+  channelId: string;
+  title: string;
+  description: string;
+  attendees: EventAttendee[];
+  eventDate: string;
+  duration: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface CalendarDay {
   date: Date;
@@ -12,8 +33,7 @@ interface CalendarDay {
 }
 
 interface TeamCalendarProps {
-  teamId: number;
-  events: Event[];
+  teamId: string;
   members: Member[];
   channels: Channel[];
   onCreateEvent?: (date?: Date) => void;
@@ -23,7 +43,6 @@ type ViewMode = "day" | "week" | "month";
 
 const TeamCalendar: React.FC<TeamCalendarProps> = ({
   teamId,
-  events,
   members,
   channels,
   onCreateEvent,
@@ -31,6 +50,34 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch events when component mounts
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get("/api/events");
+        setEvents(response.data || []);
+      } catch (err: any) {
+        console.error("Error fetching events:", err);
+        setError(
+          err.response?.status === 500
+            ? "Server error: The events service is currently unavailable"
+            : err instanceof Error
+            ? err.message
+            : "An error occurred fetching events"
+        );
+        setEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
 
   // Helper functions
   const getDaysInMonth = (year: number, month: number): number => {
@@ -94,7 +141,7 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({
   // Filter events for a specific date
   const getEventsForDate = (date: Date): Event[] => {
     return events.filter((event) => {
-      const eventDate = new Date(event.date);
+      const eventDate = new Date(event.eventDate);
       return (
         eventDate.getFullYear() === date.getFullYear() &&
         eventDate.getMonth() === date.getMonth() &&
@@ -153,6 +200,16 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({
   const weekdays = ["Du", "Lu", "Ma", "Mi", "Jo", "Vi", "Sâ"];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  // Add this helper function near the top of the component
+  const getFullName = (member: Member) => {
+    if (!member) return "";
+    return (
+      `${member.firstName || ""} ${member.lastName || ""}`.trim() ||
+      member.email ||
+      "Membru nou"
+    );
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -236,80 +293,116 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({
 
       {/* Calendar Grid */}
       <div className="p-4">
-        <div className="grid grid-cols-7 gap-px bg-gray-200">
-          {/* Weekday headers */}
-          {weekdays.map((weekday) => (
-            <div
-              key={weekday}
-              className="bg-gray-100 py-2 text-center text-sm font-medium text-gray-700"
+        {loading ? (
+          <div className="text-center py-10">
+            <svg
+              className="animate-spin h-10 w-10 text-blue-500 mx-auto mb-4"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
             >
-              {weekday}
-            </div>
-          ))}
-
-          {/* Calendar days */}
-          {calendarDays.map((day, index) => {
-            const dayEvents = getEventsForDate(day.date);
-            const isToday = day.date.toDateString() === today.toDateString();
-            const isSelected =
-              selectedDate &&
-              day.date.toDateString() === selectedDate.toDateString();
-
-            return (
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            <p className="text-gray-600">Se încarcă calendarul...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-10 text-red-500">
+            <p>{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+            >
+              Reîncearcă
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-7 gap-px bg-gray-200">
+            {/* Weekday headers */}
+            {weekdays.map((weekday) => (
               <div
-                key={index}
-                onClick={() => handleDateClick(day)}
-                className={`min-h-[120px] bg-white p-1.5 flex flex-col ${
-                  day.isCurrentMonth ? "" : "text-gray-400"
-                } ${
-                  isSelected
-                    ? "ring-2 ring-blue-500 z-10"
-                    : isToday
-                    ? "ring-1 ring-blue-300"
-                    : ""
-                } ${
-                  day.isPast
-                    ? "opacity-70 cursor-not-allowed"
-                    : "cursor-pointer hover:bg-gray-50"
-                } transition-colors`}
+                key={weekday}
+                className="bg-gray-100 py-2 text-center text-sm font-medium text-gray-700"
               >
-                <div
-                  className={`text-right p-1 text-sm ${
-                    isToday ? "font-bold text-blue-600" : "font-medium"
-                  }`}
-                >
-                  {day.date.getDate()}
-                </div>
-
-                <div className="flex-1 overflow-y-auto space-y-1">
-                  {dayEvents.slice(0, 3).map((event) => (
-                    <EventBadge
-                      key={event.id}
-                      event={event}
-                      channels={channels}
-                      onClick={() => setSelectedDate(day.date)}
-                    />
-                  ))}
-                  {dayEvents.length > 3 && (
-                    <div className="text-xs text-gray-500 text-center">
-                      +{dayEvents.length - 3} mai multe
-                    </div>
-                  )}
-                </div>
+                {weekday}
               </div>
-            );
-          })}
-        </div>
+            ))}
+
+            {/* Calendar days */}
+            {calendarDays.map((day, index) => {
+              const dayEvents = getEventsForDate(day.date);
+              const isToday = day.date.toDateString() === today.toDateString();
+              const isSelected =
+                selectedDate &&
+                day.date.toDateString() === selectedDate.toDateString();
+
+              return (
+                <div
+                  key={index}
+                  onClick={() => handleDateClick(day)}
+                  className={`min-h-[120px] bg-white p-1.5 flex flex-col ${
+                    day.isCurrentMonth ? "" : "text-gray-400"
+                  } ${
+                    isSelected
+                      ? "ring-2 ring-blue-500 z-10"
+                      : isToday
+                      ? "ring-1 ring-blue-300"
+                      : ""
+                  } ${
+                    day.isPast
+                      ? "opacity-70 cursor-not-allowed"
+                      : "cursor-pointer hover:bg-gray-50"
+                  } transition-colors`}
+                >
+                  <div
+                    className={`text-right p-1 text-sm ${
+                      isToday ? "font-bold text-blue-600" : "font-medium"
+                    }`}
+                  >
+                    {day.date.getDate()}
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto space-y-1">
+                    {dayEvents.slice(0, 3).map((event) => (
+                      <EventBadge
+                        key={event.id}
+                        event={event}
+                        channels={channels}
+                        onClick={() => setSelectedDate(day.date)}
+                      />
+                    ))}
+                    {dayEvents.length > 3 && (
+                      <div className="text-xs text-gray-500 text-center">
+                        +{dayEvents.length - 3} mai multe
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Selected Date Events Panel */}
-      {selectedDate && (
+      {selectedDate && !loading && !error && (
         <div className="border-t border-gray-200 p-4 bg-gray-50">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold text-gray-800">
               Evenimente pentru {selectedDate.toLocaleDateString("ro-RO")}
             </h3>
-            {onCreateEvent && !selectedDate && (
+            {onCreateEvent && (
               <button
                 onClick={() => handleCreateEvent(selectedDate)}
                 className="px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded-md flex items-center gap-1"
@@ -325,7 +418,8 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({
               {getEventsForDate(selectedDate)
                 .sort(
                   (a, b) =>
-                    new Date(a.date).getTime() - new Date(b.date).getTime()
+                    new Date(a.eventDate).getTime() -
+                    new Date(b.eventDate).getTime()
                 )
                 .map((event) => (
                   <EventCard
@@ -412,12 +506,15 @@ const EventBadge = ({
   channels: Channel[];
   onClick: () => void;
 }) => {
-  const eventDate = new Date(event.date);
-  const channel = channels.find((c) => c.id === event.channelId);
+  const eventDate = new Date(event.eventDate);
+  const channel = channels.find(
+    (c) => c.id.toString() === event.channelId.toString()
+  );
 
-  function formatTime(eventDate: Date): React.ReactNode {
-    throw new Error("Function not implemented.");
-  }
+  const formattedTime = eventDate.toLocaleTimeString("ro-RO", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return (
     <div
@@ -426,7 +523,7 @@ const EventBadge = ({
     >
       <div className="font-medium truncate">{event.title}</div>
       <div className="flex justify-between items-center">
-        <span className="text-blue-600">{formatTime(eventDate)}</span>
+        <span className="text-blue-600">{formattedTime}</span>
         {channel && <span className="text-blue-500">#{channel.name}</span>}
       </div>
     </div>
@@ -442,26 +539,35 @@ const EventCard = ({
   channels: Channel[];
   members: Member[];
 }) => {
-  const eventDate = new Date(event.date);
-  const channel = channels.find((c) => c.id === event.channelId);
-  const attendees = event.attendees
-    .map((id) => members.find((m) => m.id === id))
-    .filter((member): member is Member => member !== undefined);
+  const eventDate = new Date(event.eventDate);
+  const channel = channels.find(
+    (c) => c.id.toString() === event.channelId.toString()
+  );
+
+  // Find attendees based on the event.attendees array
+  const attendees = members.filter((member) =>
+    event.attendees.some(
+      (attendee) => attendee.userId.toString() === member.id.toString()
+    )
+  );
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start">
         <div className="mr-3 flex-shrink-0">
-          <div className="w-10 h-10 bg-blue-50 text-blue-800 rounded flex flex-col items-center justify-center">
-            <span className="text-xs font-bold">
-              {eventDate.getHours()}:
+          <div className="w-12 h-12 bg-blue-50 text-blue-800 rounded-lg flex flex-col items-center justify-center border border-blue-100">
+            <span className="text-xs font-semibold text-blue-500">
+              {eventDate.getHours().toString().padStart(2, "0")}:
               {eventDate.getMinutes().toString().padStart(2, "0")}
             </span>
+            <span className="text-xs text-blue-600">{event.duration} min</span>
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-gray-900 truncate">{event.title}</h4>
-          <p className="text-sm text-gray-600 truncate">{event.description}</p>
+          <h4 className="font-medium text-gray-900">{event.title}</h4>
+          <p className="text-sm text-gray-600 line-clamp-2">
+            {event.description}
+          </p>
           <div className="mt-2 flex items-center justify-between">
             {channel && (
               <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
@@ -471,15 +577,15 @@ const EventCard = ({
             {attendees.length > 0 && (
               <div className="flex -space-x-2">
                 {attendees.slice(0, 3).map((attendee) => (
-                  <img
+                  <div
                     key={attendee.id}
-                    src={
-                      attendee.avatar ||
-                      `https://ui-avatars.com/api/?name=${attendee.name}&background=random`
-                    }
-                    alt={attendee.name}
-                    className="w-6 h-6 rounded-full border-2 border-white"
-                  />
+                    className="w-6 h-6 rounded-full border-2 border-white bg-blue-100 flex items-center justify-center"
+                    title={attendee.email}
+                  >
+                    {attendee.email
+                      ? attendee.email.charAt(0).toUpperCase()
+                      : "?"}
+                  </div>
                 ))}
                 {attendees.length > 3 && (
                   <div className="w-6 h-6 rounded-full bg-gray-200 text-xs flex items-center justify-center border-2 border-white">
