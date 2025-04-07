@@ -24,7 +24,13 @@ const TeamMembersList: React.FC<TeamMembersListProps> = ({
     const fetchTeamMembers = async () => {
       try {
         setLoading(true);
+        console.log(
+          `TeamMembersList: Începe fetch pentru membrii echipei cu ID ${teamId}`
+        );
         const response = await api.get(`/api/teams/${teamId}/members`);
+
+        console.log("TeamMembersList: MEMBRI ECHIPĂ (răspuns brut):", response);
+        console.log("TeamMembersList: MEMBRI ECHIPĂ (date):", response.data);
 
         // Validate response data
         if (Array.isArray(response.data)) {
@@ -36,6 +42,22 @@ const TeamMembersList: React.FC<TeamMembersListProps> = ({
               member.id &&
               (member.firstName || member.lastName || member.email)
           );
+          console.log("TeamMembersList: MEMBRI VALIDAȚI:", validMembers);
+          console.log("TeamMembersList: Date detaliate despre membri:");
+          validMembers.forEach((member, index) => {
+            console.log(`Membru ${index + 1}:`, {
+              id: member.id,
+              firstName: member.firstName,
+              lastName: member.lastName,
+              email: member.email,
+              status: member.status,
+              roles: member.roles,
+              department: member.department,
+              profileImage: member.profileImage,
+              // Afișează toate proprietățile disponibile
+              allProps: Object.keys(member),
+            });
+          });
           setMembers(validMembers);
         } else {
           console.error("Invalid response format:", response.data);

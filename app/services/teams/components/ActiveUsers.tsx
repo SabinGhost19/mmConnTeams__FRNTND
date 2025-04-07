@@ -2,6 +2,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { getFullName, getAvatarUrl } from "@/app/lib/userUtils";
 
 interface ActiveUsersProps {
@@ -10,9 +11,21 @@ interface ActiveUsersProps {
 }
 
 const ActiveUsers: React.FC<ActiveUsersProps> = ({ users, onStartChat }) => {
+  const router = useRouter();
+
   if (users.length === 0) {
     return null;
   }
+
+  // Handle direct redirection to chat
+  const handleChatRedirect = (userId: string) => {
+    // Use the provided onStartChat or redirect directly
+    if (onStartChat) {
+      onStartChat(userId);
+    } else {
+      router.push(`/chat`);
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg shadow">
@@ -40,7 +53,7 @@ const ActiveUsers: React.FC<ActiveUsersProps> = ({ users, onStartChat }) => {
                   <p className="text-xs text-gray-500 truncate">{user.role}</p>
                 </div>
                 <button
-                  onClick={() => onStartChat(user.id)}
+                  onClick={() => handleChatRedirect(user.id)}
                   className="text-blue-600 hover:text-blue-800 p-1"
                   title="Start chat"
                 >

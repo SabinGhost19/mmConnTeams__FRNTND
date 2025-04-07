@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import ChannelList from "./ChannelList";
 import MembersList from "./MembersList";
 import TeamCalendar from "./TeamCalendar";
@@ -14,6 +15,7 @@ import Event from "@/app/types/models_types/event";
 import File from "@/app/types/models_types/file";
 import { NewEventWithAttendees } from "@/app/types/models_types/eventTypes";
 import { getFullName, getAvatarUrl } from "@/app/lib/userUtils";
+import { api as axios } from "@/app/lib/api";
 
 // Tipuri de vizualizare posibile
 type ViewType = "overview" | "channels" | "members" | "events" | "files";
@@ -39,6 +41,11 @@ interface TeamDetailViewProps {
     teamId: string,
     notificationId: string
   ) => Promise<void>;
+  onFileUpload?: (
+    file: Blob,
+    teamId: string,
+    channelId: string
+  ) => Promise<any>;
 }
 
 const TeamDetailView: React.FC<TeamDetailViewProps> = ({
@@ -58,7 +65,10 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
   onMarkNotificationAsRead,
   onJoinTeam,
   onRejectTeamInvite,
+  onFileUpload,
 }) => {
+  const router = useRouter();
+
   // State pentru modale
   const [showCreateEventModal, setShowCreateEventModal] =
     useState<boolean>(false);
@@ -75,6 +85,30 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
     useState<number>(0);
   const [isLoadingNotifications, setIsLoadingNotifications] =
     useState<boolean>(false);
+  const [isLoadingFiles, setIsLoadingFiles] = useState<boolean>(false);
+  const [teamFiles, setTeamFiles] = useState<File[]>(files);
+
+  // Fetch files when view changes to "files"
+  useEffect(() => {
+    if (selectedView === "files") {
+      fetchTeamFiles();
+    }
+  }, [selectedView, team.id]);
+
+  // Function to fetch all files for a team
+  const fetchTeamFiles = async () => {
+    if (!team.id) return;
+
+    setIsLoadingFiles(true);
+    try {
+      const response = await axios.get<File[]>(`/api/files/all/${team.id}`);
+      setTeamFiles(response.data);
+    } catch (error) {
+      console.error("Error fetching team files:", error);
+    } finally {
+      setIsLoadingFiles(false);
+    }
+  };
 
   const handleEnterTeamById = async (teamId: string) => {
     try {
@@ -192,7 +226,7 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
     : [];
 
   const onlineMembers = Array.isArray(teamMembers)
-    ? teamMembers.filter((user) => user.status === "online")
+    ? teamMembers.filter((user) => user.status === "ONLINE")
     : [];
 
   const totalChannels = team.channels?.length || 0;
@@ -206,6 +240,18 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
     (a, b) => b.unreadCount - a.unreadCount
   );
 
+  // Verifică dacă avem utilizatori pe echipă
+  // și calculează numărul celor online
+  const teamMembersCount = teamMembers ? teamMembers.length : 0;
+  console.log("TeamDetailView: Members data:", teamMembers);
+  console.log(
+    "TeamDetailView: Member status values:",
+    teamMembers?.map((user) => user.status)
+  );
+  const onlineTeamMembersCount = teamMembers
+    ? teamMembers.filter((user) => user.status === "ONLINE").length
+    : 0;
+
   // Handler pentru crearea unui eveniment nou
   const handleCreateEvent = (eventData: NewEventWithAttendees) => {
     if (onCreateEvent) {
@@ -218,6 +264,12 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
   const openCreateEventModal = () => {
     setShowCreateEventModal(true);
     console.log("Opening modal");
+  };
+
+  // Create a function to handle redirecting to chat
+  const handleStartChat = (userId: string) => {
+    // Redirect to chat page with the user ID as query parameter
+    router.push(`/chat?userId=${userId}`);
   };
 
   return (
@@ -649,7 +701,7 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                   <div
                     key={member.id}
                     className="flex items-center p-3 hover:bg-gray-50 rounded-md cursor-pointer"
-                    onClick={() => onStartChat(member.id)}
+                    onClick={() => handleStartChat(member.id)}
                   >
                     <div className="relative">
                       <img
@@ -816,7 +868,7 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
           <MembersList
             teamId={team.id}
             members={teamMembers}
-            onStartChat={onStartChat}
+            onStartChat={handleStartChat}
             onInviteUser={onInviteUser}
           />
         )}
@@ -851,7 +903,6 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
             </div>
             <TeamCalendar
               teamId={team.id.toString()}
-              events={events}
               members={teamMembers}
               channels={team.channels || []}
               onCreateEvent={openCreateEventModal}
@@ -863,9 +914,11 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
         {selectedView === "files" && (
           <TeamFiles
             teamId={team.id}
-            files={files}
+            files={teamFiles}
             channels={team.channels || []}
             members={teamMembers}
+            onFileUpload={onFileUpload}
+            isLoading={isLoadingFiles}
           />
         )}
       </div>

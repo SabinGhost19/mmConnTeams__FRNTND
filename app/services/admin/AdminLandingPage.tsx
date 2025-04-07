@@ -398,6 +398,13 @@ const AdminLandingPage: React.FC<AdminLandingPageProps> = () => {
     },
   };
 
+  console.log(
+    "AdminLandingPage: User status values:",
+    users.map((user) => user.status)
+  );
+
+  const onlineUsers = users.filter((user) => user.status === "ONLINE");
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -1445,7 +1452,7 @@ const AdminLandingPage: React.FC<AdminLandingPageProps> = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          user.status === "online"
+                          user.status === "ONLINE"
                             ? "bg-green-100 text-green-800"
                             : user.status === "busy"
                             ? "bg-red-100 text-red-800"

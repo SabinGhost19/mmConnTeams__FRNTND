@@ -1,6 +1,6 @@
 // components/TeamsLanding/TeamFiles.tsx
 "use client";
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { getFullName, getAvatarUrl } from "@/app/lib/userUtils";
 
 interface TeamFilesProps {
@@ -8,6 +8,12 @@ interface TeamFilesProps {
   files: any[];
   channels: any[];
   members: any[];
+  onFileUpload?: (
+    file: Blob,
+    teamId: string,
+    channelId: string
+  ) => Promise<any>;
+  isLoading?: boolean;
 }
 
 const TeamFiles: React.FC<TeamFilesProps> = ({
@@ -15,11 +21,16 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
   files,
   channels,
   members,
+  onFileUpload,
+  isLoading = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date"); // 'date', 'name', 'type', 'channel'
   const [filterChannel, setFilterChannel] = useState("all");
   const [filterType, setFilterType] = useState("all");
+  const [uploading, setUploading] = useState(false);
+  const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Filtrare după textul căutat
   const filteredFiles = files.filter((file) => {
@@ -189,28 +200,107 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
     });
   };
 
+  // Handle file upload
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    if (
+      !event.target.files ||
+      event.target.files.length === 0 ||
+      !onFileUpload
+    ) {
+      return;
+    }
+
+    const file = event.target.files[0];
+    const channelId =
+      selectedChannel || (channels.length > 0 ? channels[0].id : null);
+
+    if (!channelId) {
+      alert("Selectați un canal pentru încărcarea fișierului.");
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      await onFileUpload(file, teamId, channelId);
+      alert("Fișier încărcat cu succes!");
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error) {
+      console.error("Eroare la încărcarea fișierului:", error);
+      alert("A apărut o eroare la încărcarea fișierului.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Trigger file input click
+  const triggerFileUpload = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
         <h2 className="font-bold text-gray-800">Fișiere</h2>
 
-        <button className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center text-sm">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 mr-2"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+        <div className="flex items-center space-x-2">
+          {channels.length > 0 && (
+            <select
+              value={selectedChannel || ""}
+              onChange={(e) => setSelectedChannel(e.target.value)}
+              className="border rounded-lg text-sm px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Selectează canal</option>
+              {channels.map((channel) => (
+                <option key={channel.id} value={channel.id}>
+                  {channel.name}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <button
+            onClick={triggerFileUpload}
+            disabled={uploading}
+            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center text-sm"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"
-            />
-          </svg>
-          Încarcă fișier
-        </button>
+            {uploading ? (
+              <span>Se încarcă...</span>
+            ) : (
+              <>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 mr-2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"
+                  />
+                </svg>
+                Încarcă fișier
+              </>
+            )}
+          </button>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+        </div>
       </div>
 
       {/* Search & Filters */}
@@ -288,7 +378,34 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
       </div>
 
       {/* Files List */}
-      {sortedFiles.length > 0 ? (
+      {isLoading ? (
+        <div className="text-center py-20">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
+            <svg
+              className="animate-spin h-8 w-8 text-blue-600"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+          </div>
+          <p className="text-gray-600 mb-1">Se încarcă fișierele...</p>
+          <p className="text-gray-500 text-sm">Vă rugăm să așteptați.</p>
+        </div>
+      ) : sortedFiles.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -447,7 +564,10 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
               ? "Încearcă să schimbi filtrele sau caută alt termen."
               : "Încarcă primul fișier pentru această echipă."}
           </p>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center">
+          <button
+            onClick={triggerFileUpload}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-4 w-4 mr-2"

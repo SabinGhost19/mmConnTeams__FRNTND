@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import UpcomingEvents from "./UpcomingEvents";
 import ActiveUsers from "./ActiveUsers";
 import Channel from "@/app/types/models_types/channel";
@@ -28,6 +29,7 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
   onCreateTeam,
   onEnterTeamById,
 }) => {
+  const router = useRouter();
   const [totalChannels, setTotalChannels] = useState(0);
   const [showEnterTeamModal, setShowEnterTeamModal] = useState<boolean>(false);
 
@@ -85,7 +87,13 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
     }
   };
 
-  const onlineUsers = users.filter((user) => user.status === "online");
+  const onlineUsers = users.filter((user) => user.status === "ONLINE");
+
+  // Create a function that redirects to chat
+  const handleStartChat = (userId: string) => {
+    // Redirect to chat page with the user ID as query parameter
+    router.push(`/chat?userId=${userId}`);
+  };
 
   return (
     <div className="flex flex-col h-full overflow-auto">
@@ -239,7 +247,7 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
 
           <div className="lg:w-80 space-y-6">
             <UpcomingEvents teams={teams} users={users} />
-            <ActiveUsers users={onlineUsers} onStartChat={onStartChat} />
+            <ActiveUsers users={onlineUsers} onStartChat={handleStartChat} />
           </div>
         </div>
       </div>

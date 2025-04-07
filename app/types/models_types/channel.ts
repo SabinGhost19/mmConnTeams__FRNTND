@@ -5,4 +5,5 @@ export default interface Channel {
   isPrivate: boolean;
   description: string;
   unreadCount: number;
+  creatorId: string;
 }

@@ -38,6 +38,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   users = [],
   onSendMessage,
   onReaction,
+  onFileUpload,
   teamName,
   channelName,
 }) => {

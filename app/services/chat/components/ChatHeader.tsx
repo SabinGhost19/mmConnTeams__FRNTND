@@ -23,13 +23,13 @@ const ChannelHeader: React.FC<ChannelHeaderProps> = ({
       id: 1,
       name: "Ana Popescu",
       avatar: "/avatars/user1.jpg",
-      status: "online",
+      status: "ONLINE",
     },
     {
       id: 5,
       name: "Elena Stancu",
       avatar: "/avatars/user5.jpg",
-      status: "online",
+      status: "ONLINE",
     },
   ];
 
@@ -39,19 +39,19 @@ const ChannelHeader: React.FC<ChannelHeaderProps> = ({
       id: 2,
       name: "Mihai Ionescu",
       avatar: "/avatars/user2.jpg",
-      status: "offline",
+      status: "OFFLINE",
     },
     {
       id: 3,
       name: "Cristina Dumitrescu",
       avatar: "/avatars/user3.jpg",
-      status: "busy",
+      status: "BUSY",
     },
     {
       id: 4,
       name: "Alexandru Popa",
       avatar: "/avatars/user4.jpg",
-      status: "away",
+      status: "AWAY",
     },
   ];
 
@@ -204,9 +204,9 @@ const ChannelHeader: React.FC<ChannelHeaderProps> = ({
                           />
                           <span
                             className={`absolute bottom-0 right-0 block h-2 w-2 rounded-full ring-1 ring-white ${
-                              user.status === "busy"
+                              user.status === "BUSY"
                                 ? "bg-red-400"
-                                : user.status === "away"
+                                : user.status === "AWAY"
                                 ? "bg-yellow-400"
                                 : "bg-gray-400"
                             }`}
@@ -216,9 +216,9 @@ const ChannelHeader: React.FC<ChannelHeaderProps> = ({
                           {user.name}
                         </span>
                         <span className="ml-auto text-xs text-gray-500">
-                          {user.status === "busy"
+                          {user.status === "BUSY"
                             ? "Ocupat"
-                            : user.status === "away"
+                            : user.status === "AWAY"
                             ? "Plecat"
                             : "Offline"}
                         </span>

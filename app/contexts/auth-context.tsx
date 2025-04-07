@@ -11,12 +11,13 @@ import {
 import { clearAuthData, getUserData, isAuthenticated } from "../lib/auth-utils";
 import { useRouter } from "next/navigation";
 import { LoginResponse } from "../types/login";
+import { api } from "../lib/api";
 
 interface AuthContextType {
   user: any | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,10 +40,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
-  const logout = () => {
-    clearAuthData();
-    setUser(null);
-    router.push("/login");
+  const logout = async () => {
+    try {
+      // Facem request POST către /api/auth/logout pe serverul localhost:8080
+      await api.post("/api/auth/logout");
+      console.log("Logout request sent successfully");
+    } catch (error) {
+      console.error("Error during logout request:", error);
+    } finally {
+      // Indiferent de rezultatul request-ului, ștergem datele locale și redirecționăm
+      clearAuthData();
+      setUser(null);
+      router.push("/login");
+    }
   };
 
   const value = {

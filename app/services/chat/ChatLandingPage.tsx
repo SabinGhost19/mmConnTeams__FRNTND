@@ -442,12 +442,12 @@ const TeamsChat: React.FC = () => {
           id: senderUser.id,
           name: `${senderUser.firstName} ${senderUser.lastName}`,
           avatar: senderUser.avatarUrl,
-          status: senderUser.status || "offline",
+          status: senderUser.status || "OFFLINE",
         }
       : {
           id: message.senderId,
           name: "Unknown User",
-          status: "offline",
+          status: "OFFLINE",
         };
 
     // Map attachments
@@ -507,8 +507,8 @@ const TeamsChat: React.FC = () => {
 
   // Update unread counts in state
   const updateUnreadCount = (
-    teamId: number,
-    channelId: number,
+    teamId: string,
+    channelId: string,
     count: number,
     setToExact: boolean = false
   ) => {
@@ -614,7 +614,7 @@ const TeamsChat: React.FC = () => {
     );
   };
 
-  const handleTeamSelect = (teamId: number) => {
+  const handleTeamSelect = (teamId: string) => {
     const team = teams.find((t) => t.id === teamId);
     if (team) {
       setSelectedTeam(team);
@@ -627,7 +627,7 @@ const TeamsChat: React.FC = () => {
     }
   };
 
-  const handleChannelSelect = (channelId: number) => {
+  const handleChannelSelect = (channelId: string) => {
     if (!selectedTeam) return;
 
     const channel = selectedTeam.channels.find((c) => c.id === channelId);
@@ -876,7 +876,7 @@ const TeamsChat: React.FC = () => {
               team={selectedTeam}
               channel={selectedChannel}
               onlineUsers={
-                users.filter((user) => user.status === "online").length
+                users.filter((user) => user.status === "ONLINE").length
               }
               totalUsers={users.length}
             />

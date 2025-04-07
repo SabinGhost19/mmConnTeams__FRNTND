@@ -380,7 +380,7 @@ const UpcomingEvents: React.FC<UpcomingEventsProps> = ({
               const team = teams.find((t) => String(t.id) === event.teamId);
               const attendeeUsers = getAttendeeUsers(event);
               const onlineAttendees = attendeeUsers.filter(
-                (u) => u.status === "online"
+                (u) => u.status === "ONLINE"
               ).length;
 
               const dateDisplay = isEventToday
@@ -677,7 +677,7 @@ const UpcomingEvents: React.FC<UpcomingEventsProps> = ({
                           <span className="text-sm text-gray-700">
                             {user.email || "User"}
                           </span>
-                          {user.status === "online" && (
+                          {user.status === "ONLINE" && (
                             <span className="ml-2 inline-block h-2 w-2 rounded-full bg-green-400"></span>
                           )}
                         </label>

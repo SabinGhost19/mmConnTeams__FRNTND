@@ -523,7 +523,7 @@ const ChatPage = () => {
                 </div>
                 <div>
                   <div className="text-sm font-medium">Current User</div>
-                  <div className="text-xs text-[#0d47a1]">Online</div>
+                  <div className="text-xs text-[#0d47a1]">ONLINE</div>
                 </div>
               </div>
             </div>

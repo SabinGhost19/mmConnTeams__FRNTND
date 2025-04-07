@@ -20,7 +20,7 @@ import {
   PinOff,
   X,
 } from "lucide-react";
-import type { WebRTCHookReturn, ParticipantType } from "@/app/hooks/useWebRTC";
+import type { WebRTCHookReturn, Participant } from "@/app/hooks/useWebRTC";
 
 interface ChatMessageType {
   sender: string;
@@ -48,8 +48,6 @@ const ConferenceView: React.FC<ConferenceViewProps> = ({
     isHost,
     leaveRoom,
     toggleTrack,
-    selectParticipantStream,
-    selectedParticipants,
   } = webRTC;
 
   // State variables
@@ -71,6 +69,9 @@ const ConferenceView: React.FC<ConferenceViewProps> = ({
   );
   const [currentSlide, setCurrentSlide] = useState<number>(0);
   const [inviteModalOpen, setInviteModalOpen] = useState<boolean>(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const [showMediaErrorModal, setShowMediaErrorModal] =
+    useState<boolean>(false);
   const [viewConfig, setViewConfig] = useState({
     itemsPerPage: 4,
     maxGridItems: 6,
@@ -83,41 +84,44 @@ const ConferenceView: React.FC<ConferenceViewProps> = ({
   );
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // State for debug panel
+  const [showDebugPanel, setShowDebugPanel] = useState<boolean>(false);
+  const [connectionStats, setConnectionStats] = useState<Record<string, any>>(
+    {}
+  );
+
+  // Add state for connection issues
+  const [connectionIssues, setConnectionIssues] = useState<
+    Record<string, string>
+  >({});
+  const [attemptingReconnect, setAttemptingReconnect] =
+    useState<boolean>(false);
+
   // Debugging - afișează informații despre stream-uri în consolă
   useEffect(() => {
     const handleVideoPlay = async (videoElement: HTMLVideoElement | null) => {
       if (!videoElement) return;
 
       try {
-        // Oprește redarea curentă și șterge sursa pentru a preveni conflictele
-        videoElement.pause();
-        videoElement.currentTime = 0;
+        // Use a flag to prevent competing play/pause calls
+        if (!videoElement.dataset.isPlaying && videoElement.srcObject) {
+          videoElement.dataset.isPlaying = "true";
 
-        // Verifică dacă există un stream valid
-        if (videoElement.srcObject) {
-          // Folosește o metodă mai sigură de redare
-          await videoElement.play();
+          // Use a more reliable play method with proper error handling
+          await videoElement.play().catch((error) => {
+            videoElement.dataset.isPlaying = "false";
+            if (error.name !== "AbortError") {
+              console.error("Error playing video:", error);
+            }
+          });
         }
       } catch (error) {
+        videoElement.dataset.isPlaying = "false";
         if (error instanceof DOMException && error.name === "AbortError") {
-          console.warn("Redare video întreruptă. Reîncercare...");
-
-          // Adaugă o mică întârziere și reîncearcă
-          setTimeout(() => {
-            try {
-              videoElement.play().catch((retryError) => {
-                console.error(
-                  "Eroare la reîncercarea redării video:",
-                  retryError
-                );
-              });
-            } catch (retryError) {
-              console.error(
-                "Eroare la reîncercarea redării video:",
-                retryError
-              );
-            }
-          }, 100);
+          console.warn(
+            "Redare video întreruptă. Se va încerca automat din nou."
+          );
+          // Don't manually retry - the browser will handle this automatically
         } else {
           console.error("Eroare la redarea video:", error);
         }
@@ -126,6 +130,7 @@ const ConferenceView: React.FC<ConferenceViewProps> = ({
 
     // Pentru stream local
     if (localStream && localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
       handleVideoPlay(localVideoRef.current);
     }
 
@@ -133,18 +138,61 @@ const ConferenceView: React.FC<ConferenceViewProps> = ({
     Object.entries(remoteStreams).forEach(([peerId, stream]) => {
       const videoElement = remoteVideoRefs.current[peerId];
       if (videoElement) {
+        videoElement.srcObject = stream;
         handleVideoPlay(videoElement);
       }
     });
   }, [localStream, remoteStreams]);
 
+  // Effect to check media device availability on component mount
+  useEffect(() => {
+    const checkMediaDevices = async () => {
+      try {
+        // Check if MediaDevices API is supported
+        if (
+          !navigator.mediaDevices ||
+          !navigator.mediaDevices.enumerateDevices
+        ) {
+          setMediaError("Your browser doesn't support media devices access");
+          setShowMediaErrorModal(true);
+          setVideoEnabled(false);
+          return;
+        }
+
+        // List available devices
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const hasVideoInput = devices.some(
+          (device) => device.kind === "videoinput"
+        );
+        const hasAudioInput = devices.some(
+          (device) => device.kind === "audioinput"
+        );
+
+        if (!hasVideoInput && !hasAudioInput) {
+          setMediaError("No camera or microphone detected on your device");
+          setShowMediaErrorModal(true);
+          setVideoEnabled(false);
+        } else if (!hasVideoInput) {
+          console.warn("No camera detected. Continuing with audio only.");
+          setVideoEnabled(false);
+        } else if (!hasAudioInput) {
+          console.warn("No microphone detected. Continuing with video only.");
+          setAudioEnabled(false);
+        }
+      } catch (error) {
+        console.error("Error enumerating media devices:", error);
+        setMediaError("Error detecting your camera and microphone");
+        setShowMediaErrorModal(true);
+        setVideoEnabled(false);
+      }
+    };
+
+    checkMediaDevices();
+  }, []);
+
   // Calculează participanții activi (inclusiv utilizatorul curent)
   const activeParticipants = useMemo(() => {
-    const filteredParticipants = participants.filter((p) =>
-      selectedParticipants.includes(p.id)
-    );
-
-    // Adaugă utilizatorul curent
+    // Adaugă utilizatorul curent și toți participanții
     return [
       {
         id: "local",
@@ -152,9 +200,9 @@ const ConferenceView: React.FC<ConferenceViewProps> = ({
         isHost,
         isLocal: true,
       },
-      ...filteredParticipants,
+      ...participants,
     ];
-  }, [participants, selectedParticipants, userName, isHost]);
+  }, [participants, userName, isHost]);
 
   // Participanți pentru vizualizarea curentă
   const visibleParticipants = useMemo(() => {
@@ -182,11 +230,6 @@ const ConferenceView: React.FC<ConferenceViewProps> = ({
     currentSlide,
     viewConfig.itemsPerPage,
   ]);
-
-  // Participanți care nu sunt selectați
-  const unselectedParticipants = useMemo(() => {
-    return participants.filter((p) => !selectedParticipants.includes(p.id));
-  }, [participants, selectedParticipants]);
 
   // Calcul pentru layout
   const gridStyles = useMemo(() => {
@@ -274,37 +317,50 @@ const ConferenceView: React.FC<ConferenceViewProps> = ({
 
   // Efect special pentru atribuirea și gestionarea stream-urilor video
   useEffect(() => {
+    // We'll use a debounced approach to prevent rapid-fire play/pause cycles
+    let playTimeouts: { [key: string]: NodeJS.Timeout } = {};
+
+    const safePlay = (videoElement: HTMLVideoElement, id: string) => {
+      // Clear any existing timeout for this video element
+      if (playTimeouts[id]) {
+        clearTimeout(playTimeouts[id]);
+      }
+
+      // Set a small delay before attempting to play
+      playTimeouts[id] = setTimeout(() => {
+        if (videoElement && videoElement.paused && videoElement.srcObject) {
+          videoElement.play().catch((err) => {
+            // Only log non-abort errors since abort errors are expected during normal operation
+            if (err.name !== "AbortError") {
+              console.error(`Error playing video for ${id}:`, err);
+            }
+          });
+        }
+      }, 100);
+    };
+
     // Asigură-te că localStream este atribuit elementului video local
     if (localStream && localVideoRef.current) {
-      console.log("Actualizare stream local în effect");
-      localVideoRef.current.srcObject = localStream;
-
-      // Forțează redarea (poate fi necesară în unele browsere)
-      localVideoRef.current
-        .play()
-        .catch((e) =>
-          console.error("Eroare la redarea video local în effect:", e)
-        );
+      // Only set srcObject if it's different to avoid unnecessary media pipeline restarts
+      if (localVideoRef.current.srcObject !== localStream) {
+        localVideoRef.current.srcObject = localStream;
+        safePlay(localVideoRef.current, "local");
+      }
     }
 
     // Verificăm și forțăm atribuirea tuturor stream-urilor remote
     Object.entries(remoteStreams).forEach(([peerId, stream]) => {
       const videoElement = remoteVideoRefs.current[peerId];
       if (videoElement && videoElement.srcObject !== stream) {
-        console.log(`Actualizare stream pentru ${peerId} în effect`);
         videoElement.srcObject = stream;
-
-        // Forțează redarea (poate fi necesară în unele browsere)
-        videoElement
-          .play()
-          .catch((e) =>
-            console.error(
-              `Eroare la redarea video pentru ${peerId} în effect:`,
-              e
-            )
-          );
+        safePlay(videoElement, peerId);
       }
     });
+
+    // Clean up timeouts when unmounting or when streams change
+    return () => {
+      Object.values(playTimeouts).forEach((timeout) => clearTimeout(timeout));
+    };
   }, [localStream, remoteStreams]);
 
   // Când se schimbă starea audio/video locală
@@ -325,98 +381,91 @@ const ConferenceView: React.FC<ConferenceViewProps> = ({
 
   // Toggle video
   const handleToggleVideo = () => {
-    const newState = !videoEnabled;
-    setVideoEnabled(newState);
-    toggleTrack("video", newState);
+    // If we have no video devices, show error message
+    if (mediaError && !videoEnabled) {
+      setShowMediaErrorModal(true);
+      return;
+    }
+
+    setVideoEnabled(!videoEnabled);
+    toggleTrack("video", !videoEnabled);
   };
 
   // Toggle audio
   const handleToggleAudio = () => {
-    const newState = !audioEnabled;
-    setAudioEnabled(newState);
-    toggleTrack("audio", newState);
+    setAudioEnabled(!audioEnabled);
+    toggleTrack("audio", !audioEnabled);
   };
 
   // Toggle screen sharing
   const handleToggleScreenShare = async () => {
-    if (isScreenSharing) {
-      // Stop screen sharing
+    if (!isScreenSharing) {
+      try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: true,
+        });
+        setScreenShareStream(stream);
+        setIsScreenSharing(true);
+
+        // Handle stream ending
+        stream.getVideoTracks()[0].onended = () => {
+          setScreenShareStream(null);
+          setIsScreenSharing(false);
+        };
+      } catch (error) {
+        console.error("Error sharing screen:", error);
+      }
+    } else {
       if (screenShareStream) {
         screenShareStream.getTracks().forEach((track) => track.stop());
         setScreenShareStream(null);
-      }
-      setIsScreenSharing(false);
-    } else {
-      try {
-        // Start screen sharing
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
-        });
-
-        // Handle the user canceling the share
-        stream.getVideoTracks()[0].onended = () => {
-          setIsScreenSharing(false);
-          setScreenShareStream(null);
-        };
-
-        setScreenShareStream(stream);
-        setIsScreenSharing(true);
-      } catch (error) {
-        console.error("Error sharing screen:", error);
+        setIsScreenSharing(false);
       }
     }
   };
 
   // End call
   const handleEndCall = async () => {
-    // Stop screen sharing if active
-    if (screenShareStream) {
-      screenShareStream.getTracks().forEach((track) => track.stop());
+    try {
+      await leaveRoom();
+      onLeave();
+    } catch (error) {
+      console.error("Error leaving room:", error);
     }
-
-    // Leave the room
-    await leaveRoom();
-
-    // Notify parent component
-    onLeave();
   };
 
   // Send chat message
   const sendMessage = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!messageInput.trim()) return;
 
-    if (messageInput.trim()) {
-      const newMessage: ChatMessageType = {
-        sender: userName,
-        text: messageInput,
-        time: new Date(),
-        isLocal: true,
-      };
+    const newMessage: ChatMessageType = {
+      sender: userName,
+      text: messageInput,
+      time: new Date(),
+      isLocal: true,
+    };
 
-      setChatMessages((prev) => [...prev, newMessage]);
-      setMessageInput("");
-
-      // În implementarea reală, trimite acest mesaj și în Firestore
-    }
+    setChatMessages((prev) => [...prev, newMessage]);
+    setMessageInput("");
   };
 
   // Comută fixarea unui participant
   const togglePinParticipant = (participantId: string) => {
     if (pinnedParticipant === participantId) {
       setPinnedParticipant(null);
-      setLayoutMode("grid");
     } else {
       setPinnedParticipant(participantId);
-      setLayoutMode("focus");
     }
   };
 
   // Schimbă diapozitivul curent în modul galerie
   const changeSlide = (direction: "next" | "prev") => {
-    if (direction === "next" && currentSlide < totalSlides - 1) {
-      setCurrentSlide(currentSlide + 1);
-    } else if (direction === "prev" && currentSlide > 0) {
-      setCurrentSlide(currentSlide - 1);
+    if (direction === "next") {
+      setCurrentSlide((prev) => prev + 1);
+    } else {
+      setCurrentSlide((prev) => Math.max(0, prev - 1));
     }
   };
 
@@ -425,114 +474,105 @@ const ConferenceView: React.FC<ConferenceViewProps> = ({
     isLocal: boolean,
     participantId: string
   ) => {
-    if (!el) return;
-
-    // Configurare avansată pentru a gestiona stream-urile
-    const setupVideoElement = async (stream: MediaStream | null) => {
-      if (!stream) return;
-
-      try {
-        // Oprește orice redare curentă
-        el.pause();
-        el.currentTime = 0;
-
-        // Configurează noul stream
-        el.srcObject = stream;
-
-        // Opțiuni suplimentare pentru redare
-        el.autoplay = true;
-        el.playsInline = true;
-        el.muted = isLocal;
-
-        // Încercări multiple de redare
-        const playWithRetry = async (retries = 3) => {
-          try {
-            await el.play();
-          } catch (error) {
-            if (retries > 0 && error instanceof DOMException) {
-              console.warn(`Reîncercare redare video (${retries} rămase)...`);
-              await new Promise((resolve) => setTimeout(resolve, 200));
-              await playWithRetry(retries - 1);
-            } else {
-              console.error("Eroare persistentă la redarea video:", error);
-            }
-          }
-        };
-
-        await playWithRetry();
-      } catch (error) {
-        console.error("Eroare la configurarea elementului video:", error);
-      }
-    };
-
     if (isLocal) {
-      localVideoRef.current = el;
-      setupVideoElement(localStream);
+      if (el !== localVideoRef.current) {
+        localVideoRef.current = el;
+
+        // Ensure the video element has the correct srcObject
+        if (el && localStream && el.srcObject !== localStream) {
+          el.srcObject = localStream;
+          el.play().catch((err) => {
+            console.warn("Could not autoplay local video:", err);
+          });
+        }
+      }
     } else {
-      remoteVideoRefs.current[participantId] = el;
-      setupVideoElement(remoteStreams[participantId]);
+      // For remote videos, maintain a reference to each participant's video element
+      if (
+        !remoteVideoRefs.current[participantId] ||
+        remoteVideoRefs.current[participantId] !== el
+      ) {
+        remoteVideoRefs.current[participantId] = el;
+
+        // Ensure the video element has the correct srcObject
+        const stream = remoteStreams[participantId];
+        if (el && stream && el.srcObject !== stream) {
+          console.log(`Setting srcObject for ${participantId}`);
+          el.srcObject = stream;
+          el.play().catch((err) => {
+            console.warn(
+              `Could not autoplay remote video for ${participantId}:`,
+              err
+            );
+          });
+        }
+      }
     }
   };
 
-  // Obține elementele pentru "barul" de participanți neselectați
-  const renderUnselectedParticipantsBar = () => {
-    if (unselectedParticipants.length === 0) {
-      return null;
-    }
+  const setupVideoElement = async (stream: MediaStream | null) => {
+    if (!stream) return;
 
-    return (
-      <div className="absolute bottom-20 left-0 right-0 bg-gray-900 bg-opacity-80 p-2 flex items-center justify-center space-x-2 overflow-x-auto">
-        {unselectedParticipants.map((participant) => (
-          <div
-            key={participant.id}
-            className="flex flex-col items-center cursor-pointer hover:bg-gray-800 p-2 rounded-lg"
-            onClick={() => selectParticipantStream(participant.id, true)}
-          >
-            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-gray-300 mb-1">
-              {participant.userName.charAt(0).toUpperCase()}
-            </div>
-            <span className="text-xs text-white truncate max-w-[60px]">
-              {participant.userName}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
+    const videoElement =
+      stream.id === "local"
+        ? localVideoRef.current
+        : remoteVideoRefs.current[stream.id];
+    if (!videoElement) return;
+
+    try {
+      // Only set srcObject if it's different
+      if (videoElement.srcObject !== stream) {
+        videoElement.srcObject = stream;
+
+        // Use a timeout to avoid immediate play after setting srcObject
+        // This helps prevent the AbortError when pause is called shortly after play
+        setTimeout(() => {
+          if (videoElement.paused) {
+            videoElement.play().catch((error) => {
+              if (error.name !== "AbortError") {
+                console.error("Error playing video:", error);
+              }
+            });
+          }
+        }, 50);
+      }
+    } catch (error) {
+      console.error("Error setting up video element:", error);
+    }
   };
 
   // Funcție pentru a afișa butoanele de control pentru galerie
   const renderGalleryControls = () => {
-    if (layoutMode !== "gallery" || totalSlides <= 1) {
-      return null;
-    }
+    if (layoutMode !== "gallery") return null;
+
+    const totalSlides = Math.ceil(
+      activeParticipants.length / viewConfig.itemsPerPage
+    );
+    const canGoNext = currentSlide < totalSlides - 1;
+    const canGoPrev = currentSlide > 0;
 
     return (
-      <div className="absolute top-1/2 left-0 right-0 flex justify-between px-4">
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-4">
         <button
           onClick={() => changeSlide("prev")}
-          disabled={currentSlide === 0}
-          className={`p-2 rounded-full bg-gray-800 text-white 
-            ${
-              currentSlide === 0
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:bg-gray-700"
-            }`}
-          type="button"
+          disabled={!canGoPrev}
+          className={`p-2 rounded-full ${
+            canGoPrev ? "bg-gray-800 text-white" : "bg-gray-300 text-gray-500"
+          }`}
         >
-          <ChevronLeft size={24} />
+          <ChevronLeft size={20} />
         </button>
+        <span className="text-white bg-black bg-opacity-50 px-2 py-1 rounded">
+          {currentSlide + 1} / {totalSlides}
+        </span>
         <button
           onClick={() => changeSlide("next")}
-          disabled={currentSlide >= totalSlides - 1}
-          className={`p-2 rounded-full bg-gray-800 text-white 
-            ${
-              currentSlide >= totalSlides - 1
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:bg-gray-700"
-            }`}
-          type="button"
+          disabled={!canGoNext}
+          className={`p-2 rounded-full ${
+            canGoNext ? "bg-gray-800 text-white" : "bg-gray-300 text-gray-500"
+          }`}
         >
-          <ChevronRight size={24} />
+          <ChevronRight size={20} />
         </button>
       </div>
     );
@@ -544,30 +584,36 @@ const ConferenceView: React.FC<ConferenceViewProps> = ({
       <div className="absolute top-4 right-4 flex space-x-2">
         <button
           onClick={() => setLayoutMode("grid")}
-          className={`p-2 rounded-lg ${
+          className={`p-2 rounded ${
             layoutMode === "grid"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-800 text-gray-300"
+              ? "bg-blue-500 text-white"
+              : "bg-gray-800 text-white"
           }`}
-          type="button"
+          title="Grid View"
         >
-          <div className="w-5 h-5 grid grid-cols-2 gap-0.5">
-            <div className="bg-current rounded-sm"></div>
-            <div className="bg-current rounded-sm"></div>
-            <div className="bg-current rounded-sm"></div>
-            <div className="bg-current rounded-sm"></div>
-          </div>
+          <Monitor size={20} />
         </button>
         <button
           onClick={() => setLayoutMode("gallery")}
-          className={`p-2 rounded-lg ${
+          className={`p-2 rounded ${
             layoutMode === "gallery"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-800 text-gray-300"
+              ? "bg-blue-500 text-white"
+              : "bg-gray-800 text-white"
           }`}
-          type="button"
+          title="Gallery View"
         >
-          <Monitor size={20} />
+          <Users size={20} />
+        </button>
+        <button
+          onClick={() => setLayoutMode("focus")}
+          className={`p-2 rounded ${
+            layoutMode === "focus"
+              ? "bg-blue-500 text-white"
+              : "bg-gray-800 text-white"
+          }`}
+          title="Focus View"
+        >
+          <Pin size={20} />
         </button>
       </div>
     );
@@ -575,83 +621,155 @@ const ConferenceView: React.FC<ConferenceViewProps> = ({
 
   // Funcție pentru a afișa componenta participant
   const renderParticipant = (
-    participant: ParticipantType & { isLocal?: boolean },
+    participant: Participant & { isLocal?: boolean },
     index: number
   ) => {
-    const isLocal = participant.id === "local" || participant.isLocal;
-    const isPinned = pinnedParticipant === participant.id;
+    const isLocal = participant.isLocal || false;
     const stream = isLocal ? localStream : remoteStreams[participant.id];
+    const isPinned = pinnedParticipant === participant.id;
+
+    // Determine audio status
+    const audioTracks = stream?.getAudioTracks() || [];
+    const isMuted = isLocal
+      ? !audioEnabled
+      : audioTracks.length === 0 || !audioTracks[0]?.enabled;
+
+    // Log detailed audio track info for debugging
+    if (!isLocal && stream && audioTracks.length > 0) {
+      console.log(`Audio track for ${participant.id}:`, {
+        enabled: audioTracks[0]?.enabled,
+        muted: audioTracks[0]?.muted,
+        readyState: audioTracks[0]?.readyState,
+      });
+    }
+
+    // Improved video track detection
+    const videoTracks = stream?.getVideoTracks() || [];
+    const hasVideoTrack = videoTracks.length > 0;
+    const hasVideo = isLocal
+      ? videoEnabled && hasVideoTrack
+      : hasVideoTrack && videoTracks[0]?.enabled !== false;
+
+    // Determine if this is an audio-only participant
+    const isAudioOnly =
+      stream && audioTracks.length > 0 && (!hasVideoTrack || !hasVideo);
+
+    // Log stream info for debugging
+    if (!isLocal && stream) {
+      console.log(
+        `Remote stream for ${participant.userName} (${participant.id}):`,
+        {
+          hasStream: !!stream,
+          hasVideoTrack,
+          videoTrackEnabled: hasVideoTrack ? videoTracks[0]?.enabled : false,
+          audioTrackEnabled:
+            audioTracks.length > 0 ? audioTracks[0]?.enabled : false,
+          videoTracks: videoTracks.map((t) => ({
+            kind: t.kind,
+            enabled: t.enabled,
+            id: t.id,
+          })),
+          audioTracks: audioTracks.map((t) => ({
+            kind: t.kind,
+            enabled: t.enabled,
+            id: t.id,
+          })),
+          streamActive: stream.active,
+          isAudioOnly,
+        }
+      );
+    }
 
     return (
       <div
         key={participant.id}
-        className={`relative bg-gray-800 rounded-lg overflow-hidden
-          ${isPinned ? "col-span-full row-span-full" : ""}
-          ${layoutMode === "focus" && !isPinned ? "hidden" : ""}
-        `}
+        className={`relative rounded-lg overflow-hidden ${
+          isPinned ? "col-span-2 row-span-2" : ""
+        }`}
       >
-        {/* Video de la participanți */}
-        {stream ? (
+        {stream && hasVideo ? (
           <video
             ref={(el) => setVideoRef(el, isLocal, participant.id)}
             autoPlay
             playsInline
-            muted={isLocal} // Dezactivează sunetul pentru videoul local
+            muted={isLocal}
             className="w-full h-full object-cover"
             onLoadedMetadata={(e) => {
-              // Asigură redarea după încărcarea metadatelor
-              const video = e.currentTarget;
-              video
-                .play()
-                .catch((err) =>
-                  console.error("Eroare la redare după metadata:", err)
+              // Try to play the video as soon as metadata is loaded
+              const vid = e.target as HTMLVideoElement;
+              vid.play().catch((err) => {
+                console.warn(
+                  `Could not autoplay video for ${participant.id}:`,
+                  err
                 );
+              });
             }}
-          ></video>
+          />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-900">
-            <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center text-gray-300 text-2xl">
+          <div
+            className={`w-full h-full ${
+              isAudioOnly ? "bg-blue-800" : "bg-gray-800"
+            } flex flex-col items-center justify-center`}
+          >
+            <div className="text-white text-4xl font-bold mb-2">
               {participant.userName.charAt(0).toUpperCase()}
             </div>
+            {isAudioOnly && (
+              <div className="text-white text-sm bg-black bg-opacity-40 px-2 py-1 rounded">
+                Audio Only
+              </div>
+            )}
           </div>
         )}
 
-        {/* Indicatori pentru audio și video */}
         <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
-          <div className="bg-black bg-opacity-60 px-2 py-1 rounded text-white text-sm">
-            {participant.userName} {isLocal ? "(Tu)" : ""}
-            {participant.isHost && (
-              <span className="ml-1 text-blue-400">(Gazdă)</span>
-            )}
+          <div className="text-white bg-black bg-opacity-50 px-2 py-1 rounded">
+            {participant.userName} {isLocal ? "(You)" : ""}
+            {participant.isHost && " (Host)"}
           </div>
-
-          <div className="flex space-x-1">
-            {/* Pentru utilizatorul local, verificăm starea efectivă */}
-            {isLocal && (
-              <>
-                {!audioEnabled && (
-                  <div className="bg-red-600 p-1 rounded-full">
-                    <MicOff size={14} className="text-white" />
-                  </div>
-                )}
-                {!videoEnabled && (
-                  <div className="bg-red-600 p-1 rounded-full">
-                    <VideoOff size={14} className="text-white" />
-                  </div>
-                )}
-              </>
+          <div className="flex space-x-2">
+            {isMuted && (
+              <div className="bg-black bg-opacity-50 p-1 rounded">
+                <MicOff size={16} className="text-white" />
+              </div>
             )}
+            {!hasVideo && (
+              <div className="bg-black bg-opacity-50 p-1 rounded">
+                <VideoOff size={16} className="text-white" />
+              </div>
+            )}
+            <button
+              onClick={() => togglePinParticipant(participant.id)}
+              className="bg-black bg-opacity-50 p-1 rounded"
+            >
+              {isPinned ? (
+                <PinOff size={16} className="text-white" />
+              ) : (
+                <Pin size={16} className="text-white" />
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Buton pentru fixare/defixare */}
-        <button
-          onClick={() => togglePinParticipant(participant.id)}
-          className="absolute top-2 right-2 p-1 rounded-full bg-black bg-opacity-50 text-white hover:bg-opacity-70"
-          type="button"
-        >
-          {isPinned ? <PinOff size={16} /> : <Pin size={16} />}
-        </button>
+        {/* Hidden audio element for audio-only participants */}
+        {isAudioOnly && (
+          <audio
+            autoPlay
+            ref={(el) => {
+              if (el && stream && !isLocal) {
+                if (el.srcObject !== stream) {
+                  el.srcObject = stream;
+                  el.play().catch((err) => {
+                    console.warn(
+                      `Could not play audio for ${participant.id}:`,
+                      err
+                    );
+                  });
+                }
+              }
+            }}
+          />
+        )}
       </div>
     );
   };
@@ -664,432 +782,537 @@ const ConferenceView: React.FC<ConferenceViewProps> = ({
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-900 flex flex-col">
-      <div className="flex-grow flex flex-col overflow-hidden">
-        {/* Antet */}
-        <div className="bg-gray-800 py-2 px-4 flex justify-between items-center">
-          <div className="flex items-center">
-            <span className="text-white font-semibold">
-              Conferință TeamSync
-            </span>
-            {roomId && (
-              <div className="ml-4 bg-gray-700 px-3 py-1 rounded text-sm text-gray-300 flex items-center">
-                <span className="mr-2">Camera: {roomId}</span>
-                <button
-                  onClick={copyRoomId}
-                  className="text-blue-400 hover:text-blue-300"
-                  type="button"
-                >
-                  Copiază
-                </button>
-              </div>
-            )}
-          </div>
+  // Retry accessing media devices
+  const retryMediaAccess = async () => {
+    try {
+      setMediaError(null);
+      setShowMediaErrorModal(false);
 
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setShowParticipants(!showParticipants)}
-              className={`p-2 rounded-full ${
-                showParticipants
-                  ? "bg-blue-600"
-                  : "text-gray-400 hover:text-white hover:bg-gray-700"
-              }`}
-              type="button"
-            >
-              <Users size={20} />
-            </button>
-            <button
-              onClick={() => setInviteModalOpen(true)}
-              className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700"
-              type="button"
-            >
-              <UserPlus size={20} />
-            </button>
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700"
-              type="button"
-            >
-              <Settings size={20} />
-            </button>
-            <button
-              onClick={() => setShowChat(!showChat)}
-              className={`p-2 rounded-full ${
-                showChat
-                  ? "bg-blue-600"
-                  : "text-gray-400 hover:text-white hover:bg-gray-700"
-              }`}
-              type="button"
-            >
-              <MessageSquare size={20} />
-            </button>
-          </div>
-        </div>
+      const constraints = {
+        audio: true,
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      };
 
-        {/* Conținut principal */}
-        <div className="flex-grow flex overflow-hidden">
-          {/* Grilă de participanți */}
-          <div
-            ref={containerRef}
-            className="relative flex-grow p-4 overflow-auto"
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+      // If we get here, we successfully got a stream
+      if (stream) {
+        // In a real implementation, you would need to update the WebRTC connection
+        // For this example we'll just update our local state
+        setVideoEnabled(true);
+        setAudioEnabled(true);
+      }
+    } catch (error) {
+      console.error("Error retrying media access:", error);
+      if (error instanceof DOMException) {
+        if (error.name === "NotFoundError") {
+          setMediaError("No camera or microphone found on your device");
+        } else if (error.name === "NotAllowedError") {
+          setMediaError("Please allow access to your camera and microphone");
+        } else {
+          setMediaError(`Media error: ${error.message}`);
+        }
+      } else {
+        setMediaError("Unknown error accessing your camera and microphone");
+      }
+      setShowMediaErrorModal(true);
+    }
+  };
+
+  // Dedicated effect for monitoring remote streams
+  useEffect(() => {
+    // Skip if there are no remote streams
+    if (Object.keys(remoteStreams).length === 0) return;
+
+    console.log("Remote streams updated:", Object.keys(remoteStreams));
+
+    // For each remote stream, check if we have a video element
+    Object.entries(remoteStreams).forEach(([peerId, stream]) => {
+      // Check if this is a new stream
+      if (stream) {
+        // Get or create video element
+        let videoElement = remoteVideoRefs.current[peerId];
+
+        // If we already have a video element, update it
+        if (videoElement) {
+          if (videoElement.srcObject !== stream) {
+            console.log(`Updating existing video element for ${peerId}`);
+            videoElement.srcObject = stream;
+            videoElement.play().catch((err) => {
+              console.warn(`Could not play video for ${peerId}:`, err);
+            });
+          }
+        }
+
+        // Log active tracks
+        const videoTracks = stream.getVideoTracks();
+        const audioTracks = stream.getAudioTracks();
+
+        console.log(`PeerID ${peerId} stream:`, {
+          active: stream.active,
+          videoTracks: videoTracks.length,
+          audioTracks: audioTracks.length,
+          videoEnabled: videoTracks.length > 0 ? videoTracks[0].enabled : false,
+        });
+      }
+    });
+
+    // Clean up references for peers that no longer have streams
+    Object.keys(remoteVideoRefs.current).forEach((peerId) => {
+      if (!remoteStreams[peerId]) {
+        delete remoteVideoRefs.current[peerId];
+      }
+    });
+  }, [remoteStreams]);
+
+  // Effect to gather connection stats
+  useEffect(() => {
+    if (!showDebugPanel) return;
+
+    const getConnectionStats = async () => {
+      const stats: Record<string, any> = {
+        connections: {},
+        participantCount: participants.length,
+        remoteStreamCount: Object.keys(remoteStreams).length,
+      };
+
+      // Get access to peer connections via props
+      // This is a workaround since we don't have direct access to peerConnections
+      // In a production app, you'd want to expose this via the WebRTC hook
+      const peerConnectionsMap: Record<string, RTCPeerConnection> = {};
+
+      // Gather information from remote streams and participants
+      Object.keys(remoteStreams).forEach((peerId) => {
+        const participant = participants.find((p) => p.id === peerId);
+        if (participant) {
+          stats.connections[peerId] = {
+            connectionState: "unknown", // We'll update what we can
+            iceConnectionState: "unknown",
+            iceGatheringState: "unknown",
+            signalingState: "unknown",
+            participantName: participant.userName || "Unknown",
+            hasAudio: remoteStreams[peerId]?.getAudioTracks().length > 0,
+            hasVideo: remoteStreams[peerId]?.getVideoTracks().length > 0,
+          };
+        }
+      });
+
+      setConnectionStats(stats);
+    };
+
+    // Update stats every 3 seconds
+    const interval = setInterval(getConnectionStats, 3000);
+    getConnectionStats(); // Initial call
+
+    return () => clearInterval(interval);
+  }, [showDebugPanel, participants, remoteStreams]);
+
+  // Render debug panel
+  const renderDebugPanel = () => {
+    if (!showDebugPanel) return null;
+
+    return (
+      <div
+        className="absolute left-4 bottom-20 bg-black bg-opacity-80 p-4 rounded-lg text-white text-xs max-w-md overflow-auto"
+        style={{ maxHeight: "40vh" }}
+      >
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="font-bold">WebRTC Debug</h3>
+          <button
+            onClick={() => setShowDebugPanel(false)}
+            className="text-gray-400 hover:text-white"
           >
-            <div className={`grid gap-4 h-full`} style={gridStyles}>
-              {visibleParticipants.map((p, index) =>
-                renderParticipant(p, index)
-              )}
-            </div>
-
-            {renderUnselectedParticipantsBar()}
-            {renderGalleryControls()}
-            {renderLayoutControls()}
-          </div>
-
-          {/* Participant sidebar */}
-          {showParticipants && (
-            <div className="w-80 bg-gray-800 border-l border-gray-700 flex flex-col">
-              <div className="p-3 border-b border-gray-700 flex justify-between items-center">
-                <h3 className="text-white font-medium">
-                  Participanți ({participants.length + 1})
-                </h3>
-                <button
-                  onClick={() => setShowParticipants(false)}
-                  className="text-gray-400 hover:text-white"
-                  type="button"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="flex-grow p-3 overflow-y-auto">
-                <ul className="space-y-2">
-                  {/* Utilizatorul curent (întotdeauna primul) */}
-                  <li className="flex items-center justify-between p-2 rounded-lg bg-gray-700">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium">
-                        {userName.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="ml-2 text-white">{userName} (Tu)</span>
-                      {isHost && (
-                        <span className="ml-2 px-1.5 py-0.5 text-xs text-blue-300 border border-blue-600 rounded">
-                          Gazdă
-                        </span>
-                      )}
-                    </div>
-                  </li>
-
-                  {/* Ceilalți participanți */}
-                  {participants.map((participant) => {
-                    const isSelected = selectedParticipants.includes(
-                      participant.id
-                    );
-
-                    return (
-                      <li
-                        key={participant.id}
-                        className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-700"
-                      >
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-white font-medium">
-                            {participant.userName.charAt(0).toUpperCase()}
-                          </div>
-                          <span className="ml-2 text-white">
-                            {participant.userName}
-                          </span>
-                          {participant.isHost && (
-                            <span className="ml-2 px-1.5 py-0.5 text-xs text-blue-300 border border-blue-600 rounded">
-                              Gazdă
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center">
-                          <button
-                            onClick={() =>
-                              selectParticipantStream(
-                                participant.id,
-                                !isSelected
-                              )
-                            }
-                            className={`p-1 rounded ${
-                              isSelected
-                                ? "bg-green-600 text-white"
-                                : "bg-gray-600 text-gray-300"
-                            }`}
-                            type="button"
-                          >
-                            {isSelected ? "Activat" : "Inactiv"}
-                          </button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {/* Chat sidebar */}
-          {showChat && (
-            <div className="w-80 bg-gray-800 border-l border-gray-700 flex flex-col">
-              <div className="p-3 border-b border-gray-700 flex justify-between items-center">
-                <h3 className="text-white font-medium">Chat</h3>
-                <button
-                  onClick={() => setShowChat(false)}
-                  className="text-gray-400 hover:text-white"
-                  type="button"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="flex-grow p-3 overflow-y-auto">
-                {chatMessages.length === 0 ? (
-                  <div className="text-center text-gray-500 py-8">
-                    Niciun mesaj
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {chatMessages.map((msg, index) => (
-                      <div
-                        key={index}
-                        className={`flex ${
-                          msg.isLocal ? "justify-end" : "justify-start"
-                        }`}
-                      >
-                        <div
-                          className={`max-w-[80%] rounded-lg px-3 py-2 ${
-                            msg.isLocal
-                              ? "bg-blue-600 text-white"
-                              : "bg-gray-700 text-white"
-                          }`}
-                        >
-                          <div className="text-xs mb-1">
-                            <span className="font-medium">{msg.sender}</span>
-                            <span className="ml-2 text-opacity-70">
-                              {new Date(msg.time).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                          </div>
-                          <div>{msg.text}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <form
-                onSubmit={sendMessage}
-                className="p-3 border-t border-gray-700"
-              >
-                <div className="flex">
-                  <input
-                    type="text"
-                    value={messageInput}
-                    onChange={(e) => setMessageInput(e.target.value)}
-                    className="flex-grow bg-gray-700 border-none rounded-l-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    placeholder="Scrie un mesaj..."
-                  />
-                  <button
-                    type="submit"
-                    className="bg-blue-600 text-white rounded-r-lg px-3 hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    Trimite
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {/* Modal pentru invitație */}
-          {inviteModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-20">
-              <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full overflow-hidden">
-                <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-                  <h3 className="text-lg font-medium text-white">
-                    Invită participanți
-                  </h3>
-                  <button
-                    onClick={() => setInviteModalOpen(false)}
-                    className="text-gray-400 hover:text-white"
-                    type="button"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="p-6">
-                  <p className="text-gray-300 mb-4">
-                    Partajează acest ID al camerei cu persoanele pe care dorești
-                    să le inviți:
-                  </p>
-
-                  <div className="flex mb-6">
-                    <input
-                      type="text"
-                      readOnly
-                      value={roomId || ""}
-                      className="flex-grow p-2 border border-gray-600 rounded-l-lg bg-gray-700 text-white"
-                    />
-                    <button
-                      onClick={copyRoomId}
-                      className="px-3 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700"
-                      type="button"
-                    >
-                      Copiază
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={() => setInviteModalOpen(false)}
-                    className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                    type="button"
-                  >
-                    Închide
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Modal pentru setări */}
-          {showSettings && (
-            <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-20">
-              <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full overflow-hidden">
-                <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-                  <h3 className="text-lg font-medium text-white">Setări</h3>
-                  <button
-                    onClick={() => setShowSettings(false)}
-                    className="text-gray-400 hover:text-white"
-                    type="button"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="p-6 space-y-6">
-                  <div>
-                    <h4 className="text-white text-lg mb-3">Audio și Video</h4>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-gray-300 mb-2">
-                          Dispozitiv cameră
-                        </label>
-                        <select className="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-white">
-                          <option>Camera web integrată</option>
-                          <option>Camera externă</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-gray-300 mb-2">
-                          Dispozitiv microfon
-                        </label>
-                        <select className="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-white">
-                          <option>Microfon integrat</option>
-                          <option>Căști cu microfon</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-gray-300 mb-2">
-                          Dispozitiv audio
-                        </label>
-                        <select className="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-white">
-                          <option>Difuzoare integrate</option>
-                          <option>Căști</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-white text-lg mb-3">Interfață</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="darkMode"
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-600 rounded"
-                          defaultChecked
-                        />
-                        <label
-                          htmlFor="darkMode"
-                          className="ml-2 text-gray-300"
-                        >
-                          Mod întunecat
-                        </label>
-                      </div>
-
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="hideParticipantsWithDisabledVideo"
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-600 rounded"
-                        />
-                        <label
-                          htmlFor="hideParticipantsWithDisabledVideo"
-                          className="ml-2 text-gray-300"
-                        >
-                          Ascunde participanții cu camera dezactivată
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+            <X size={16} />
+          </button>
         </div>
 
-        {/* Controale */}
-        <div className="bg-gray-800 py-3 px-6 flex justify-center">
-          <div className="flex space-x-4">
-            <button
-              onClick={handleToggleAudio}
-              className={`p-3 rounded-full ${
-                audioEnabled
-                  ? "bg-gray-700 text-white"
-                  : "bg-red-600 text-white"
-              }`}
-              type="button"
-            >
-              {audioEnabled ? <Mic size={22} /> : <MicOff size={22} />}
-            </button>
-            <button
-              onClick={handleToggleVideo}
-              className={`p-3 rounded-full ${
-                videoEnabled
-                  ? "bg-gray-700 text-white"
-                  : "bg-red-600 text-white"
-              }`}
-              type="button"
-            >
-              {videoEnabled ? <Video size={22} /> : <VideoOff size={22} />}
-            </button>
-            <button
-              onClick={handleToggleScreenShare}
-              className={`p-3 rounded-full ${
-                isScreenSharing
-                  ? "bg-green-600 text-white"
-                  : "bg-gray-700 text-white"
-              }`}
-              type="button"
-            >
-              <ScreenShare size={22} />
-            </button>
-            <button
-              onClick={handleEndCall}
-              className="p-3 rounded-full bg-red-600 text-white"
-              type="button"
-            >
-              <PhoneOff size={22} />
-            </button>
-          </div>
+        <div>
+          <p>Room ID: {roomId}</p>
+          <p>
+            Your ID:{" "}
+            {participants.find((p) => p.isHost === isHost)?.id || "Unknown"}
+          </p>
+          <p>Participants: {connectionStats.participantCount}</p>
+          <p>Remote Streams: {connectionStats.remoteStreamCount}</p>
+        </div>
+
+        <div className="mt-2">
+          <h4 className="font-semibold mb-1">Connections:</h4>
+          {Object.entries(connectionStats.connections || {}).map(
+            ([id, stats]: [string, any]) => (
+              <div key={id} className="mb-2 border-t border-gray-700 pt-1">
+                <p>
+                  <span className="font-medium">{stats.participantName}</span> (
+                  {id.substring(0, 6)}...)
+                </p>
+                <p
+                  className={`${
+                    stats.connectionState === "connected"
+                      ? "text-green-400"
+                      : "text-yellow-400"
+                  }`}
+                >
+                  Connection: {stats.connectionState}
+                </p>
+                <p
+                  className={`${
+                    stats.iceConnectionState === "connected" ||
+                    stats.iceConnectionState === "completed"
+                      ? "text-green-400"
+                      : "text-yellow-400"
+                  }`}
+                >
+                  ICE: {stats.iceConnectionState}
+                </p>
+                <p>Signaling: {stats.signalingState}</p>
+                <p>
+                  Media: {stats.hasAudio ? "🔊" : "🔇"}{" "}
+                  {stats.hasVideo ? "📹" : "📵"}
+                </p>
+              </div>
+            )
+          )}
+
+          {Object.keys(connectionStats.connections || {}).length === 0 && (
+            <p className="text-gray-400">No active connections</p>
+          )}
         </div>
       </div>
+    );
+  };
+
+  // Function to manually reconnect when connection fails
+  const handleReconnect = async () => {
+    setAttemptingReconnect(true);
+
+    try {
+      // First leave the room - this will clean up peer connections
+      await leaveRoom();
+
+      // Wait a moment to ensure everything is cleaned up
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Re-join the room
+      if (roomId) {
+        await webRTC.joinRoom(roomId, userName);
+      }
+
+      // Clear connection issues
+      setConnectionIssues({});
+    } catch (error) {
+      console.error("Error reconnecting:", error);
+    } finally {
+      setAttemptingReconnect(false);
+    }
+  };
+
+  // Monitor for ICE connection failures
+  useEffect(() => {
+    // Check if any participants have dropped but are still in the list
+    const checkConnectionStatus = () => {
+      const issues: Record<string, string> = {};
+
+      participants.forEach((participant) => {
+        // If we don't have a stream for this participant but they're marked as active
+        if (!remoteStreams[participant.id] && participant.streamActive) {
+          issues[participant.id] = "No connection";
+        }
+      });
+
+      if (Object.keys(issues).length > 0) {
+        setConnectionIssues(issues);
+      } else if (Object.keys(connectionIssues).length > 0) {
+        setConnectionIssues({});
+      }
+    };
+
+    // Check every 10 seconds
+    const interval = setInterval(checkConnectionStatus, 10000);
+
+    return () => clearInterval(interval);
+  }, [participants, remoteStreams, connectionIssues]);
+
+  // Render connection issues banner
+  const renderConnectionIssuesBanner = () => {
+    if (Object.keys(connectionIssues).length === 0) return null;
+
+    return (
+      <div className="absolute top-16 inset-x-0 mx-auto max-w-md bg-yellow-600 text-white p-3 rounded-lg shadow-lg flex justify-between items-center">
+        <div>
+          <p className="font-semibold">Connection issues detected</p>
+          <p className="text-sm">
+            Some participants may not be connected properly
+          </p>
+        </div>
+        <button
+          onClick={handleReconnect}
+          disabled={attemptingReconnect}
+          className="bg-white text-yellow-700 px-3 py-1 rounded hover:bg-yellow-100 disabled:opacity-50"
+        >
+          {attemptingReconnect ? "Reconnecting..." : "Reconnect"}
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-screen">
+      <div className="flex-1 relative">
+        <div
+          ref={containerRef}
+          className="h-full grid gap-2 p-4"
+          style={gridStyles}
+        >
+          {visibleParticipants.map((participant, index) =>
+            renderParticipant(participant, index)
+          )}
+        </div>
+
+        {renderGalleryControls()}
+        {renderLayoutControls()}
+        {renderConnectionIssuesBanner()}
+
+        <div className="absolute top-4 left-4 flex items-center space-x-2">
+          <button
+            onClick={copyRoomId}
+            className="bg-gray-800 text-white px-3 py-1 rounded"
+          >
+            Room ID: {roomId}
+          </button>
+          <button
+            onClick={() => setShowParticipants(!showParticipants)}
+            className="bg-gray-800 text-white p-2 rounded"
+          >
+            <Users size={20} />
+          </button>
+          <button
+            onClick={() => setShowChat(!showChat)}
+            className="bg-gray-800 text-white p-2 rounded"
+          >
+            <MessageSquare size={20} />
+          </button>
+          <button
+            onClick={() => setInviteModalOpen(true)}
+            className="bg-gray-800 text-white p-2 rounded"
+          >
+            <UserPlus size={20} />
+          </button>
+          <button
+            onClick={() => setShowDebugPanel(!showDebugPanel)}
+            className={`p-2 rounded ${
+              showDebugPanel ? "bg-blue-600" : "bg-gray-800"
+            } text-white`}
+            title="Debug Panel"
+          >
+            <Settings size={20} />
+          </button>
+        </div>
+
+        {/* Render debug panel */}
+        {renderDebugPanel()}
+      </div>
+
+      <div className="bg-gray-900 p-4 flex justify-center space-x-4">
+        <button
+          onClick={handleToggleAudio}
+          className={`p-3 rounded-full ${
+            audioEnabled ? "bg-gray-700" : "bg-red-500"
+          }`}
+        >
+          {audioEnabled ? <Mic size={24} /> : <MicOff size={24} />}
+        </button>
+        <button
+          onClick={handleToggleVideo}
+          className={`p-3 rounded-full ${
+            videoEnabled ? "bg-gray-700" : "bg-red-500"
+          }`}
+        >
+          {videoEnabled ? <Video size={24} /> : <VideoOff size={24} />}
+        </button>
+        <button
+          onClick={handleToggleScreenShare}
+          className={`p-3 rounded-full ${
+            isScreenSharing ? "bg-green-500" : "bg-gray-700"
+          }`}
+        >
+          <ScreenShare size={24} />
+        </button>
+        <button
+          onClick={() => setShowSettings(!showSettings)}
+          className="p-3 rounded-full bg-gray-700"
+        >
+          <Settings size={24} />
+        </button>
+        <button onClick={handleEndCall} className="p-3 rounded-full bg-red-500">
+          <PhoneOff size={24} />
+        </button>
+      </div>
+
+      {showChat && (
+        <div className="absolute right-0 top-0 bottom-0 w-80 bg-gray-900 p-4 flex flex-col">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Chat</h3>
+            <button onClick={() => setShowChat(false)}>
+              <X size={20} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto mb-4">
+            {chatMessages.map((msg, index) => (
+              <div
+                key={index}
+                className={`mb-2 ${msg.isLocal ? "text-right" : "text-left"}`}
+              >
+                <div
+                  className={`inline-block p-2 rounded-lg ${
+                    msg.isLocal
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-700 text-white"
+                  }`}
+                >
+                  <div className="text-xs">{msg.sender}</div>
+                  <div>{msg.text}</div>
+                  <div className="text-xs text-right">
+                    {msg.time.toLocaleTimeString()}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <form onSubmit={sendMessage} className="flex">
+            <input
+              type="text"
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+              placeholder="Type a message..."
+              className="flex-1 p-2 rounded-l bg-gray-800 text-white"
+            />
+            <button
+              type="submit"
+              className="bg-blue-500 text-white px-4 py-2 rounded-r"
+            >
+              Send
+            </button>
+          </form>
+        </div>
+      )}
+
+      {showParticipants && (
+        <div className="absolute right-0 top-0 bottom-0 w-80 bg-gray-900 p-4 flex flex-col">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Participants</h3>
+            <button onClick={() => setShowParticipants(false)}>
+              <X size={20} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {activeParticipants.map((participant) => {
+              const isLocal = "isLocal" in participant && participant.isLocal;
+              return (
+                <div
+                  key={participant.id}
+                  className="flex items-center justify-between p-2 hover:bg-gray-800 rounded"
+                >
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center mr-2">
+                      {participant.userName.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="font-medium">
+                        {participant.userName} {isLocal ? "(You)" : ""}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {participant.isHost ? "Host" : "Participant"}
+                      </div>
+                    </div>
+                  </div>
+                  {!isLocal && (
+                    <button
+                      onClick={() => togglePinParticipant(participant.id)}
+                      className="p-1 rounded hover:bg-gray-700"
+                    >
+                      {pinnedParticipant === participant.id ? (
+                        <PinOff size={16} />
+                      ) : (
+                        <Pin size={16} />
+                      )}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Media Error Modal */}
+      {showMediaErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full">
+            <h3 className="text-xl font-semibold text-white mb-4">
+              Camera or Microphone Issue
+            </h3>
+            <div className="mb-6 text-gray-300">
+              <p className="mb-2">
+                {mediaError ||
+                  "There was an issue accessing your camera or microphone"}
+              </p>
+              <p>
+                You can still join the conference, but others won't be able to
+                see or hear you until this is resolved.
+              </p>
+            </div>
+            <div className="flex flex-col space-y-2">
+              <button
+                onClick={retryMediaAccess}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded"
+              >
+                Retry Camera/Mic Access
+              </button>
+              <button
+                onClick={() => setShowMediaErrorModal(false)}
+                className="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded"
+              >
+                Continue Without Camera
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Other modals */}
+      {inviteModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-gray-900 p-6 rounded-lg w-96">
+            <h3 className="text-lg font-semibold mb-4">Invite to Room</h3>
+            <p className="mb-4">
+              Share this room ID with others to join your meeting:
+            </p>
+            <div className="flex mb-4">
+              <input
+                type="text"
+                value={roomId || ""}
+                readOnly
+                className="flex-1 p-2 bg-gray-800 rounded-l"
+              />
+              <button
+                onClick={copyRoomId}
+                className="bg-blue-500 text-white px-4 py-2 rounded-r"
+              >
+                Copy
+              </button>
+            </div>
+            <button
+              onClick={() => setInviteModalOpen(false)}
+              className="w-full bg-gray-700 text-white py-2 rounded"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

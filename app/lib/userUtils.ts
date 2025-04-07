@@ -47,11 +47,16 @@ export const getAvatarUrl = (user: any): string => {
 export const createBackwardCompatibleUser = (
   user: UserTeam
 ): UserTeam & { name: string; avatar: string } => {
-  return {
+  console.log("TRANSFORMARE USER - Original user object:", user);
+
+  const compatibleUser = {
     ...user,
     // Add virtual name property
     name: getFullName(user),
     // Add virtual avatar property
     avatar: user.profileImage || "",
   };
+
+  console.log("TRANSFORMARE USER - Backward compatible user:", compatibleUser);
+  return compatibleUser;
 };

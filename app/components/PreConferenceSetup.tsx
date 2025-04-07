@@ -47,6 +47,7 @@ const PreConferenceSetup: React.FC<PreConferenceSetupProps> = ({
   const [roomInputValue, setRoomInputValue] = useState<string>(
     roomIdToJoin || ""
   );
+  const [error, setError] = useState<string>("");
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -75,18 +76,72 @@ const PreConferenceSetup: React.FC<PreConferenceSetupProps> = ({
         };
 
         // Request access to camera and microphone
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        const stream = await navigator.mediaDevices
+          .getUserMedia(constraints)
+          .catch(async (error) => {
+            // If requesting both video and audio failed, try just audio
+            if (
+              (videoEnabled &&
+                audioEnabled &&
+                error.name === "NotReadableError") ||
+              error.name === "AbortError"
+            ) {
+              console.warn("Failed to get camera+mic, trying audio only");
+              // Try with audio only if both were requested
+              const audioOnlyStream = await navigator.mediaDevices
+                .getUserMedia({
+                  audio: true,
+                  video: false,
+                })
+                .catch((e) => {
+                  console.error("Failed to get audio-only stream:", e);
+                  return null;
+                });
+
+              if (audioOnlyStream) {
+                // Update permission status for fallback
+                setDevicePermissionStatus({
+                  camera: "denied", // Mark camera as denied since we couldn't access it
+                  microphone: "granted",
+                });
+
+                // Update UI state
+                setVideoEnabled(false);
+
+                // Show a helpful message to the user
+                setError(
+                  "Camera is in use by another application. You can continue with audio only, or close other applications using the camera and refresh the page."
+                );
+
+                return audioOnlyStream;
+              }
+              return null;
+            }
+            throw error; // Re-throw if it's not a case we can handle
+          });
+
+        // If stream is null (all attempts failed), handle accordingly
+        if (!stream) {
+          throw new DOMException(
+            "Could not access any media devices",
+            "NotAllowedError"
+          );
+        }
 
         localStreamRef.current = stream;
 
-        if (videoRef.current && videoEnabled) {
+        if (
+          videoRef.current &&
+          videoEnabled &&
+          stream.getVideoTracks().length > 0
+        ) {
           videoRef.current.srcObject = stream;
         }
 
-        // Update permission status
+        // Update permission status based on what tracks we actually got
         setDevicePermissionStatus({
-          camera: videoEnabled ? "granted" : "disabled",
-          microphone: audioEnabled ? "granted" : "disabled",
+          camera: stream.getVideoTracks().length > 0 ? "granted" : "denied",
+          microphone: stream.getAudioTracks().length > 0 ? "granted" : "denied",
         });
 
         // Get available devices
@@ -112,12 +167,113 @@ const PreConferenceSetup: React.FC<PreConferenceSetupProps> = ({
       } catch (error) {
         console.error("Error accessing media devices:", error);
 
-        // Update permission status based on error
-        if (error instanceof DOMException && error.name === "NotAllowedError") {
+        // Provide more specific error handling based on the error type
+        if (error instanceof DOMException) {
+          if (
+            error.name === "NotReadableError" ||
+            error.name === "AbortError"
+          ) {
+            // This usually means the camera is already in use by another application
+            console.warn(
+              "Camera is likely already in use by another application"
+            );
+            setDevicePermissionStatus({
+              camera: "denied",
+              microphone: audioEnabled ? "pending" : "disabled",
+            });
+
+            // Try to get audio-only for testing with multiple browsers
+            if (audioEnabled) {
+              try {
+                const audioOnlyStream =
+                  await navigator.mediaDevices.getUserMedia({
+                    audio: true,
+                    video: false,
+                  });
+
+                localStreamRef.current = audioOnlyStream;
+
+                setVideoEnabled(false);
+                setDevicePermissionStatus((prev) => ({
+                  ...prev,
+                  camera: "denied",
+                  microphone: "granted",
+                }));
+
+                // Show a helpful message to the user
+                setError(
+                  "Camera is in use by another application. You can continue with audio only, or close other applications using the camera and refresh the page."
+                );
+              } catch (audioError) {
+                console.error("Error getting audio-only stream:", audioError);
+                setDevicePermissionStatus((prev) => ({
+                  ...prev,
+                  microphone: "denied",
+                }));
+
+                // Show a more specific error message
+                if (audioError instanceof DOMException) {
+                  if (audioError.name === "NotAllowedError") {
+                    setError(
+                      "Microphone access denied. Please allow microphone access to continue."
+                    );
+                  } else if (audioError.name === "NotFoundError") {
+                    setError(
+                      "No microphone found. Please connect a microphone and try again."
+                    );
+                  } else {
+                    setError(
+                      "Could not access microphone. Please check your device permissions."
+                    );
+                  }
+                } else {
+                  setError(
+                    "Could not access any media devices. Please check your device permissions."
+                  );
+                }
+              }
+            } else {
+              setError(
+                "Camera is in use by another application. Please close other applications using the camera and refresh the page."
+              );
+            }
+          } else if (error.name === "NotAllowedError") {
+            // User denied permission
+            setDevicePermissionStatus({
+              camera: videoEnabled ? "denied" : "disabled",
+              microphone: audioEnabled ? "denied" : "disabled",
+            });
+            setError(
+              "Camera and microphone access denied. Please allow access to continue."
+            );
+          } else if (error.name === "NotFoundError") {
+            // No media devices available
+            setDevicePermissionStatus({
+              camera: videoEnabled ? "denied" : "disabled",
+              microphone: audioEnabled ? "denied" : "disabled",
+            });
+            setError(
+              "No camera or microphone found. Please connect devices and try again."
+            );
+          } else {
+            // Other errors
+            setDevicePermissionStatus({
+              camera: videoEnabled ? "denied" : "disabled",
+              microphone: audioEnabled ? "denied" : "disabled",
+            });
+            setError(
+              "Could not access media devices. Please check your device permissions."
+            );
+          }
+        } else {
+          // Generic error handling
           setDevicePermissionStatus({
             camera: videoEnabled ? "denied" : "disabled",
             microphone: audioEnabled ? "denied" : "disabled",
           });
+          setError(
+            "Could not access media devices. Please check your device permissions."
+          );
         }
       }
     };
@@ -149,9 +305,31 @@ const PreConferenceSetup: React.FC<PreConferenceSetupProps> = ({
       } else {
         // Request video again if turning on
         try {
-          const newStream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-          });
+          const newStream = await navigator.mediaDevices
+            .getUserMedia({
+              video: true,
+            })
+            .catch((error) => {
+              // Handle errors specifically for camera already in use
+              if (
+                error.name === "NotReadableError" ||
+                error.name === "AbortError"
+              ) {
+                console.warn(
+                  "Camera is likely already in use by another application"
+                );
+                throw new DOMException(
+                  "Camera is in use by another application",
+                  "AbortError"
+                );
+              }
+              throw error;
+            });
+
+          if (!newStream) {
+            throw new Error("Failed to get video stream");
+          }
+
           const videoTrack = newStream.getVideoTracks()[0];
 
           // Make sure we have a valid stream reference
@@ -171,10 +349,24 @@ const PreConferenceSetup: React.FC<PreConferenceSetupProps> = ({
           }));
         } catch (error) {
           console.error("Error enabling video:", error);
+
+          // Show a helpful message about camera already in use
+          if (
+            error instanceof DOMException &&
+            (error.name === "NotReadableError" || error.name === "AbortError")
+          ) {
+            alert(
+              "Camera is already in use by another application. For testing with two browsers, please use audio only in one of them."
+            );
+          }
+
           setDevicePermissionStatus((prev) => ({
             ...prev,
             camera: "denied",
           }));
+
+          // Revert the UI state since we couldn't enable video
+          setVideoEnabled(false);
         }
       }
     }
@@ -318,6 +510,45 @@ const PreConferenceSetup: React.FC<PreConferenceSetupProps> = ({
     }
   };
 
+  // Add a helper component for testing instructions
+  const renderTestingHelp = () => {
+    return (
+      <div className="my-4 p-4 bg-blue-50 text-blue-800 rounded-lg text-sm max-w-3xl mx-auto">
+        <h4 className="font-semibold mb-2 text-base">
+          Testing with multiple browsers?
+        </h4>
+        <p className="mb-2">
+          We've improved the application to better handle multiple browsers
+          accessing the same devices. Here's what to know:
+        </p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>
+            The application will automatically detect if your camera is already
+            in use and switch to audio-only mode for additional browser windows
+          </li>
+          <li>You'll see clear notifications when this happens</li>
+          <li>
+            For best results, open the first instance and allow camera and
+            microphone access before opening additional instances
+          </li>
+          <li>
+            If you have multiple cameras, you can select different cameras in
+            each browser to enable video in both
+          </li>
+          <li>
+            If you get error messages about duplicate keys, it's safe to ignore
+            them - this is just React's way of warning about identical device
+            IDs
+          </li>
+        </ul>
+        <p className="mt-2 font-medium">
+          Problem persists? Try refreshing one browser window while keeping the
+          other open.
+        </p>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-blue-50 to-white flex flex-col">
       <nav className="bg-white shadow-sm z-50">
@@ -327,6 +558,9 @@ const PreConferenceSetup: React.FC<PreConferenceSetupProps> = ({
           </div>
         </div>
       </nav>
+
+      {/* Add the testing help at the top for visibility */}
+      {renderTestingHelp()}
 
       <div className="flex-grow flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-3xl">
@@ -504,9 +738,9 @@ const PreConferenceSetup: React.FC<PreConferenceSetupProps> = ({
                                   !videoEnabled || cameraDevices.length === 0
                                 }
                               >
-                                {cameraDevices.map((device) => (
+                                {cameraDevices.map((device, index) => (
                                   <option
-                                    key={device.deviceId}
+                                    key={`camera-${device.deviceId}-${index}`}
                                     value={device.deviceId}
                                   >
                                     {device.label ||
@@ -564,9 +798,9 @@ const PreConferenceSetup: React.FC<PreConferenceSetupProps> = ({
                                   microphoneDevices.length === 0
                                 }
                               >
-                                {microphoneDevices.map((device) => (
+                                {microphoneDevices.map((device, index) => (
                                   <option
-                                    key={device.deviceId}
+                                    key={`mic-${device.deviceId}-${index}`}
                                     value={device.deviceId}
                                   >
                                     {device.label ||
