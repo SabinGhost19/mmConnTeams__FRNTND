@@ -318,12 +318,14 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col h-full bg-gradient-to-br from-gray-50 to-blue-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm rounded-b-xl">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div className="flex items-center space-x-4">
-            <span className="text-3xl">{team.icon}</span>
+            <div className="flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md">
+              <span className="text-xl">{team.icon}</span>
+            </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-800">{team.name}</h1>
               <p className="text-sm text-gray-500">{team.description}</p>
@@ -345,24 +347,24 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
           </div>
           <div className="flex items-center space-x-3">
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowTeamId(!showTeamId)}
-              className="flex items-center px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200"
+              className="flex items-center px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-full transition-all duration-200 shadow-sm"
             >
               <FiCopy className="h-4 w-4 mr-2" />
               {showTeamId ? "Hide ID" : "Show ID"}
             </motion.button>
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowNotificationsModal(true)}
-              className="relative flex items-center px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200"
+              className="relative flex items-center px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-full transition-all duration-200 shadow-sm"
             >
               <FiBell className="h-4 w-4 mr-2" />
               Notifications
               {unreadNotificationsCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs px-1.5 py-0.5 rounded-full shadow-sm">
                   {unreadNotificationsCount}
                 </span>
               )}
@@ -372,8 +374,8 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
       </div>
 
       {/* Navigation Tabs */}
-      <div className="bg-white border-b border-gray-200 px-6">
-        <div className="flex space-x-1">
+      <div className="bg-white border-b border-gray-200 px-6 py-2 shadow-sm">
+        <div className="flex space-x-2 overflow-x-auto scrollbar-hide">
           {[
             { id: ViewType.TEAM_DETAIL, label: "Overview", icon: FiUsers },
             { id: ViewType.CHANNEL, label: "Channels", icon: FiMessageSquare },
@@ -385,13 +387,13 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
             return (
               <motion.button
                 key={tab.id}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => onChangeView(tab.id)}
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
                   selectedView === tab.id
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 shadow-sm"
                 }`}
               >
                 <Icon className="h-4 w-4 mr-2" />
@@ -419,10 +421,10 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+                  className="bg-white rounded-2xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-all duration-300"
                 >
                   <div className="flex items-center">
-                    <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                    <div className="p-3 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 text-white shadow-md">
                       <FiUsers className="h-6 w-6" />
                     </div>
                     <div className="ml-4">
@@ -432,7 +434,7 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                       <p className="text-2xl font-semibold text-gray-900">
                         {teamMembersCount}
                       </p>
-                      <p className="text-xs text-green-600">
+                      <p className="text-xs font-medium text-green-600">
                         {onlineMembers.length} online
                       </p>
                     </div>
@@ -443,10 +445,10 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.1 }}
-                  className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+                  className="bg-white rounded-2xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-all duration-300"
                 >
                   <div className="flex items-center">
-                    <div className="p-3 rounded-full bg-green-100 text-green-600">
+                    <div className="p-3 rounded-full bg-gradient-to-r from-green-400 to-green-600 text-white shadow-md">
                       <FiMessageSquare className="h-6 w-6" />
                     </div>
                     <div className="ml-4">
@@ -464,10 +466,10 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.2 }}
-                  className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+                  className="bg-white rounded-2xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-all duration-300"
                 >
                   <div className="flex items-center">
-                    <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                    <div className="p-3 rounded-full bg-gradient-to-r from-purple-400 to-purple-600 text-white shadow-md">
                       <FiCalendar className="h-6 w-6" />
                     </div>
                     <div className="ml-4">
@@ -485,10 +487,10 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.3 }}
-                  className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+                  className="bg-white rounded-2xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-all duration-300"
                 >
                   <div className="flex items-center">
-                    <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                    <div className="p-3 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-white shadow-md">
                       <FiFile className="h-6 w-6" />
                     </div>
                     <div className="ml-4">
@@ -510,6 +512,7 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.2 }}
+                className="bg-white rounded-2xl shadow-md p-6 border border-gray-100"
               >
                 <ChannelList
                   teamId={team.id}
@@ -527,6 +530,7 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.2 }}
+                className="bg-white rounded-2xl shadow-md p-6 border border-gray-100"
               >
                 <MembersList
                   teamId={team.id}
@@ -541,14 +545,22 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
             )}
 
             {selectedView === ViewType.OVERVIEW && (
-              <div className="p-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.2 }}
+                className="bg-white rounded-2xl shadow-md p-6 border border-gray-100"
+              >
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold">Events</h2>
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-indigo-600 bg-clip-text text-transparent">
+                    Events
+                  </h2>
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={openCreateEventModal}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                    className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full hover:shadow-lg transition-all duration-200"
                   >
                     <FiPlus className="h-4 w-4 mr-2" />
                     Create Event
@@ -560,12 +572,20 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                   channels={team.channels || []}
                   onCreateEvent={openCreateEventModal}
                 />
-              </div>
+              </motion.div>
             )}
 
             {selectedView === ViewType.FILES && (
-              <div className="p-6">
-                <h2 className="text-2xl font-bold mb-4">Files</h2>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.2 }}
+                className="bg-white rounded-2xl shadow-md p-6 border border-gray-100"
+              >
+                <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-500 to-orange-600 bg-clip-text text-transparent">
+                  Files
+                </h2>
                 <TeamFiles
                   teamId={team.id}
                   files={teamFiles}
@@ -580,7 +600,7 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                   }}
                   onShareFile={onShareFile}
                 />
-              </div>
+              </motion.div>
             )}
           </motion.div>
         </AnimatePresence>
