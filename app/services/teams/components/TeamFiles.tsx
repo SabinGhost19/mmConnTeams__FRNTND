@@ -2,10 +2,11 @@
 "use client";
 import React, { useState, useRef } from "react";
 import { getFullName, getAvatarUrl } from "@/app/lib/userUtils";
+import File from "@/app/types/models_types/file";
 
 interface TeamFilesProps {
   teamId: string;
-  files: any[];
+  files: File[];
   channels: any[];
   members: any[];
   onFileUpload?: (
@@ -14,15 +15,23 @@ interface TeamFilesProps {
     channelId: string
   ) => Promise<any>;
   isLoading?: boolean;
+  onUploadFile: (file: File) => void;
+  onDeleteFile: (fileId: string) => void;
+  onDownloadFile: (fileId: string) => void;
+  onShareFile: (fileId: string, userIds: string[]) => void;
 }
 
 const TeamFiles: React.FC<TeamFilesProps> = ({
   teamId,
-  files,
-  channels,
-  members,
+  files = [],
+  channels = [],
+  members = [],
   onFileUpload,
   isLoading = false,
+  onUploadFile,
+  onDeleteFile,
+  onDownloadFile,
+  onShareFile,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date"); // 'date', 'name', 'type', 'channel'
@@ -251,7 +260,7 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
         <h2 className="font-bold text-gray-800">Fișiere</h2>
 
         <div className="flex items-center space-x-2">
-          {channels.length > 0 && (
+          {Array.isArray(channels) && channels.length > 0 && (
             <select
               value={selectedChannel || ""}
               onChange={(e) => setSelectedChannel(e.target.value)}

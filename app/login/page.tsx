@@ -13,7 +13,6 @@ const loginPage = () => {
   const router = useRouter();
 
   const handleSubmit = () => {
-    //call loginMUtatuion
     setError("");
     if (!email || !password) {
       setError("Email Password is not inserted");

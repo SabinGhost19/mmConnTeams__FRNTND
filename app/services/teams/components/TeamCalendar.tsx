@@ -379,7 +379,7 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({
                         key={event.id}
                         event={event}
                         channels={channels}
-                        onClick={() => setSelectedDate(day.date)}
+                        onSelectEvent={() => setSelectedDate(day.date)}
                       />
                     ))}
                     {dayEvents.length > 3 && (
@@ -497,19 +497,15 @@ const PlusIcon = () => (
   </svg>
 );
 
-const EventBadge = ({
-  event,
-  channels,
-  onClick,
-}: {
+const EventBadge: React.FC<{
   event: Event;
-  channels: Channel[];
-  onClick: () => void;
-}) => {
+  channels: any[]; // Update this to use proper Channel type if available
+  onSelectEvent: (event: Event) => void;
+}> = ({ event, channels = [], onSelectEvent }) => {
   const eventDate = new Date(event.eventDate);
-  const channel = channels.find(
-    (c) => c.id.toString() === event.channelId.toString()
-  );
+  const channel = Array.isArray(channels)
+    ? channels.find((c) => c.id.toString() === event.channelId.toString())
+    : null;
 
   const formattedTime = eventDate.toLocaleTimeString("ro-RO", {
     hour: "2-digit",
@@ -518,7 +514,7 @@ const EventBadge = ({
 
   return (
     <div
-      onClick={onClick}
+      onClick={() => onSelectEvent(event)}
       className="text-xs p-1 bg-blue-50 text-blue-800 rounded truncate cursor-pointer hover:bg-blue-100 transition-colors"
     >
       <div className="font-medium truncate">{event.title}</div>

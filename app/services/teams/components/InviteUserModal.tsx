@@ -6,7 +6,7 @@ interface InviteUserModalProps {
   teamId: string;
   teamName: string;
   onClose: () => void;
-  onSubmit: (inviteData: {
+  onInviteUser: (inviteData: {
     email: string;
     role: string;
     message: string;
@@ -17,7 +17,7 @@ const InviteUserModal: React.FC<InviteUserModalProps> = ({
   teamId,
   teamName,
   onClose,
-  onSubmit,
+  onInviteUser,
 }) => {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member"); // 'member', 'admin'
@@ -30,7 +30,7 @@ const InviteUserModal: React.FC<InviteUserModalProps> = ({
       return; // Validare simplă
     }
 
-    onSubmit({
+    onInviteUser({
       email,
       role,
       message,

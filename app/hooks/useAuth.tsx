@@ -14,7 +14,7 @@ export const useLogin = () => {
       //+
       //redirectare
       console.log(data);
-      router.push("/teams");
+      router.push("/dashboard");
     },
   });
 };

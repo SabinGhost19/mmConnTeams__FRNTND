@@ -32,7 +32,6 @@ export default function PaginaTest() {
       >
         Gestionare Facultate
       </h1>
-
       {currentPage === "pagA" && (
         <PagA
           useNavigate={() => {
@@ -46,7 +45,7 @@ export default function PaginaTest() {
           }}
         />
       )}
-
+      zz
       {currentPage === "pagB" && (
         <>
           <button

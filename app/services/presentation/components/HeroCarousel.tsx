@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { Globe } from "lucide-react";
 
 const HeroCarousel: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -7,31 +8,34 @@ const HeroCarousel: React.FC = () => {
   const carouselItems = [
     {
       id: 1,
-      title: "Innovative Design Solutions",
-      description: "Transforming ideas into cutting-edge visual experiences",
+      title: "Collaborate Seamlessly",
+      description:
+        "Connect your team with powerful messaging, video meetings, and file sharing",
       imageUrl:
-        "https://wallpapers.com/images/hd/creative-cloud-storage-technology-clip-art-cho1olksva7l9xi5.jpg",
+        "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80",
     },
     {
       id: 2,
-      title: "Creative Technology Frontiers",
-      description: "Pushing boundaries of interactive digital experiences",
+      title: "Boost Team Productivity",
+      description:
+        "Keep your projects on track with integrated task management and scheduling",
       imageUrl:
-        "https://c0.wallpaperflare.com/preview/757/377/153/business-office-meetings-marketing.jpg",
+        "https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80",
     },
     {
       id: 3,
-      title: "Next-Generation Visualization",
-      description: "Crafting immersive and dynamic visual narratives",
+      title: "Work From Anywhere",
+      description:
+        "Stay connected with your team whether you're in the office or on the go",
       imageUrl:
-        "https://as1.ftcdn.net/jpg/03/25/80/02/1000_F_325800248_w9sG5xSOXAK7S0zZaRIhIR3RW6RtT3WF.webp",
+        "https://images.unsplash.com/photo-1600880292089-90a7e086ee0c?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80",
     },
   ];
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % carouselItems.length);
-    }, 2000);
+    }, 5000); // Increased time to 5 seconds for better readability
 
     return () => clearInterval(timer);
   }, []);
@@ -45,7 +49,7 @@ const HeroCarousel: React.FC = () => {
         <div
           key={item.id}
           className={`
-            absolute inset-0 transition-opacity duration-500 ease-in-out
+            absolute inset-0 transition-opacity duration-1000 ease-in-out
             ${currentSlide === index ? "opacity-100" : "opacity-0"}
           `}
         >
@@ -57,7 +61,7 @@ const HeroCarousel: React.FC = () => {
             />
             <div
               className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-              style={{ backgroundColor: "rgba(12, 15, 44, 0.7)" }}
+              style={{ backgroundColor: "rgba(10, 33, 192, 0.6)" }}
             >
               <div className="text-center max-w-3xl px-4">
                 <h1
@@ -66,32 +70,18 @@ const HeroCarousel: React.FC = () => {
                 >
                   {item.title}
                 </h1>
-                <p className="text-2xl mb-8" style={{ color: "#B3B4BD" }}>
-                  {item.description}
-                </p>
-                <div className="space-x-4">
-                  <button
-                    className="px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-300"
-                    style={{
-                      backgroundColor: "#0A21C0",
-                      color: "white",
-                      boxShadow: "0 4px 6px rgba(10, 33, 192, 0.3)",
-                      transform: "hover:scale-105",
-                    }}
-                  >
-                    Get Started
-                  </button>
+                <p className="text-2xl mb-8 text-white">{item.description}</p>
+                <div>
                   <Link
-                    href="/learnmore"
-                    className="px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-300"
+                    href="/login"
+                    className="px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-300 hover:scale-105 hover:shadow-lg"
                     style={{
-                      backgroundColor: "transparent",
-                      color: "#B3B4BD",
-                      border: "2px solid #B3B4BD",
-                      transform: "hover:scale-105",
+                      backgroundColor: "white",
+                      color: "#0A21C0",
+                      boxShadow: "0 4px 6px rgba(255, 255, 255, 0.3)",
                     }}
                   >
-                    Learn More
+                    Get Started Free
                   </Link>
                 </div>
               </div>
@@ -108,7 +98,11 @@ const HeroCarousel: React.FC = () => {
             onClick={() => setCurrentSlide(index)}
             className={`
               w-3 h-3 rounded-full transition-all duration-300
-              ${currentSlide === index ? "bg-[#0A21C0] w-6" : "bg-[#B3B4BD]"}
+              ${
+                currentSlide === index
+                  ? "bg-white w-6"
+                  : "bg-gray-400 bg-opacity-60"
+              }
             `}
           />
         ))}

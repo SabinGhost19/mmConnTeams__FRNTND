@@ -14,6 +14,9 @@ interface MembersListProps {
   members: UserTeam[];
   onStartChat: (userId: string) => void;
   onInviteUser: () => void;
+  onAddMember: (userId: string) => void;
+  onRemoveMember: (userId: string) => void;
+  onUpdateMemberRole: (userId: string, role: string) => void;
 }
 
 // Props pentru componenta MemberCard
@@ -31,6 +34,9 @@ const MembersList: React.FC<MembersListProps> = ({
   members,
   onStartChat,
   onInviteUser,
+  onAddMember,
+  onRemoveMember,
+  onUpdateMemberRole,
 }) => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortBy, setSortBy] = useState<SortByOption>("status");

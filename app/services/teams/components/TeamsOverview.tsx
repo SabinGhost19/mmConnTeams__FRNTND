@@ -1,11 +1,22 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  FiUsers,
+  FiMessageSquare,
+  FiCalendar,
+  FiFile,
+  FiPlus,
+  FiArrowRight,
+  FiKey,
+} from "react-icons/fi";
 import UpcomingEvents from "./UpcomingEvents";
 import ActiveUsers from "./ActiveUsers";
 import Channel from "@/app/types/models_types/channel";
 import { UserTeam as User } from "@/app/types/models_types/userType";
 import Team from "@/app/types/models_types/team";
+import File from "@/app/types/models_types/file";
 import { api as axios } from "@/app/lib/api";
 import EnterTeamModal from "./EnterTeamModal";
 import { getFullName, getAvatarUrl } from "@/app/lib/userUtils";
@@ -13,6 +24,7 @@ import { getFullName, getAvatarUrl } from "@/app/lib/userUtils";
 interface TeamsOverviewProps {
   teams: Team[];
   users: User[];
+  teamFiles: File[];
   onSelectTeam: (teamId: string) => void;
   onStartChat: (userId: string) => void;
   onJoinChannel: (teamId: string, channelId: string) => void;
@@ -21,8 +33,9 @@ interface TeamsOverviewProps {
 }
 
 const TeamsOverview: React.FC<TeamsOverviewProps> = ({
-  teams,
-  users,
+  teams = [],
+  users = [],
+  teamFiles = [],
   onSelectTeam,
   onStartChat,
   onJoinChannel,
@@ -32,6 +45,13 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
   const router = useRouter();
   const [totalChannels, setTotalChannels] = useState(0);
   const [showEnterTeamModal, setShowEnterTeamModal] = useState<boolean>(false);
+  const [stats, setStats] = useState({
+    totalTeams: teams.length,
+    totalUsers: users.length,
+    totalChannels: 0,
+    totalFiles: teamFiles.length,
+    totalEvents: 0,
+  });
 
   useEffect(() => {
     const loadTotalChannels = async () => {
@@ -41,15 +61,14 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
         );
 
         const allChannels = await Promise.all(channelsPromises);
-
         const total = allChannels.reduce(
           (sum, channels) => sum + channels.length,
           0
         );
-        console.log("Total channels...", total);
         setTotalChannels(total);
+        setStats((prev) => ({ ...prev, totalChannels: total }));
       } catch (error) {
-        console.error("Eroare la calcularea numărului total de canale:", error);
+        console.error("Error calculating total channels:", error);
         setTotalChannels(0);
       }
     };
@@ -62,138 +81,186 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
       if (onEnterTeamById) {
         await onEnterTeamById(teamId);
         setShowEnterTeamModal(false);
-
-        // Opțional: reîncarcă echipele sau actualizează starea
-        // fetchTeams();
       }
     } catch (error) {
-      // Gestionare erori suplimentară dacă este necesar
-      console.error("Eroare la intrarea în echipă:", error);
+      console.error("Error joining team:", error);
     }
   };
+
   const fetchTeamChannels = async (teamId: string): Promise<Channel[]> => {
     try {
       const response = await axios.get<Channel[]>(
         `/api/teams/${teamId}/channels`
       );
-      console.log("ALL CHANNELS: ", response.data);
       return response.data || [];
     } catch (error) {
-      console.error(
-        `Eroare la preluarea canalelor pentru echipa ${teamId}:`,
-        error
-      );
+      console.error(`Error fetching channels for team ${teamId}:`, error);
       return [];
     }
   };
 
   const onlineUsers = users.filter((user) => user.status === "ONLINE");
 
-  // Create a function that redirects to chat
   const handleStartChat = (userId: string) => {
-    // Redirect to chat page with the user ID as query parameter
     router.push(`/chat?userId=${userId}`);
   };
 
   return (
-    <div className="flex flex-col h-full overflow-auto">
+    <div className="flex flex-col h-full overflow-auto bg-gray-50">
+      {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Prezentare generală Teams
-          </h1>
-          <button
-            onClick={() => setShowEnterTeamModal(true)}
-            className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 px-4 rounded-md flex items-center"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 mr-2"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+          <h1 className="text-2xl font-bold text-gray-800">Teams Overview</h1>
+          <div className="flex flex-wrap gap-3">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowEnterTeamModal(true)}
+              className="flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition-colors duration-200"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            Intră în echipă după ID
-          </button>
-          <button
-            onClick={onCreateTeam}
-            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 mr-2"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+              <FiKey className="h-5 w-5 mr-2" />
+              Join Team by ID
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onCreateTeam}
+              className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
-            Echipă nouă
-          </button>
+              <FiPlus className="h-5 w-5 mr-2" />
+              Create New Team
+            </motion.button>
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 bg-gray-50 p-6 overflow-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {/* Carduri statistici (rămân neschimbate) */}
-          {/* ... */}
+      {/* Stats Cards */}
+      <div className="p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+          >
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                <FiUsers className="h-6 w-6" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Total Teams</p>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {stats.totalTeams}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+          >
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-green-100 text-green-600">
+                <FiMessageSquare className="h-6 w-6" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">
+                  Total Channels
+                </p>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {stats.totalChannels}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+          >
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                <FiCalendar className="h-6 w-6" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Events</p>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {stats.totalEvents || 0}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+          >
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                <FiFile className="h-6 w-6" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Total Files</p>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {stats.totalFiles}
+                </p>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
+          {/* Teams Grid */}
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">
-              Echipele tale
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {teams.map((team) => (
-                <div
+            <h2 className="text-xl font-bold text-gray-800 mb-6">Your Teams</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {teams.map((team, index) => (
+                <motion.div
                   key={team.id}
-                  className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200 overflow-hidden"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  whileHover={{ y: -5 }}
+                  className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 overflow-hidden"
                 >
                   <div
-                    className={`h-2 ${
+                    className={`h-1 ${
                       team.unreadCount && team.unreadCount > 0
                         ? "bg-blue-600"
                         : "bg-gray-200"
                     }`}
-                  ></div>
-                  <div className="p-5">
+                  />
+                  <div className="p-6">
                     <div className="flex items-center mb-4">
                       <span className="text-3xl mr-3">{team.icon}</span>
-                      <div>
+                      <div className="flex-1">
                         <h3 className="font-bold text-lg text-gray-900">
                           {team.name}
                         </h3>
                         <p className="text-sm text-gray-500">
-                          {team.channels ? team.channels.length : 0} canale
+                          {team.channels ? team.channels.length : 0} channels
                         </p>
                       </div>
                       {team.unreadCount && team.unreadCount > 0 && (
-                        <span className="ml-auto bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                        <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
                           {team.unreadCount}
                         </span>
                       )}
                     </div>
 
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                    <p className="text-gray-600 text-sm mb-6 line-clamp-2">
                       {team.description}
                     </p>
 
-                    <div className="flex items-center justify-between mt-4">
+                    <div className="flex items-center justify-between">
                       <div className="flex -space-x-2">
-                        {/* Modificare pentru a gestiona membrii */}
                         {Array.isArray(team.members) &&
                         team.members.length > 0 ? (
                           team.members.slice(0, 3).map((memberId) => {
@@ -209,13 +276,13 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
                           })
                         ) : (
                           <span className="text-sm text-gray-500">
-                            Niciun membru
+                            No members
                           </span>
                         )}
 
                         {Array.isArray(team.members) &&
                           team.members.length > 3 && (
-                            <div className="w-8 h-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center">
                               <span className="text-xs font-medium text-gray-600">
                                 +{team.members.length - 3}
                               </span>
@@ -223,34 +290,39 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
                           )}
                       </div>
 
-                      <div className="flex">
-                        <button
-                          onClick={() => onSelectTeam(team.id)}
-                          className="text-blue-600 hover:text-blue-800 px-3 py-1 text-sm"
-                        >
-                          Vezi detalii
-                        </button>
-                      </div>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => onSelectTeam(team.id)}
+                        className="flex items-center text-blue-600 hover:text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors duration-200"
+                      >
+                        View Details
+                        <FiArrowRight className="ml-2 h-4 w-4" />
+                      </motion.button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
-          {/* Modal pentru intrarea într-o echipă */}
-          {showEnterTeamModal && (
-            <EnterTeamModal
-              onClose={() => setShowEnterTeamModal(false)}
-              onEnterTeam={handleEnterTeamById}
-            />
-          )}
 
+          {/* Sidebar */}
           <div className="lg:w-80 space-y-6">
             <UpcomingEvents teams={teams} users={users} />
             <ActiveUsers users={onlineUsers} onStartChat={handleStartChat} />
           </div>
         </div>
       </div>
+
+      {/* Enter Team Modal */}
+      <AnimatePresence>
+        {showEnterTeamModal && (
+          <EnterTeamModal
+            onClose={() => setShowEnterTeamModal(false)}
+            onEnterTeam={handleEnterTeamById}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

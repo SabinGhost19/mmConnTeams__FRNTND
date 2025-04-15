@@ -22,7 +22,8 @@ export const getFullName = (user: any): string => {
  * Gets the avatar URL for a user, falling back to UI Avatars
  */
 export const getAvatarUrl = (user: any): string => {
-  if (!user) return "";
+  if (!user)
+    return "https://ui-avatars.com/api/?name=Unknown&background=random";
 
   // Use profileImage if available
   if (user.profileImage) {

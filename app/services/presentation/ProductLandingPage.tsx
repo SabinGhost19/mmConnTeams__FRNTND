@@ -17,10 +17,13 @@ import {
   CloudLightning,
   Server,
   Workflow,
+  Smile,
+  Coffee,
+  Heart,
   LucideIcon,
 } from "lucide-react";
 import HeroCarousel from "./components/HeroCarousel";
-import PricingPlans from "./components/PricingPlans";
+import TeamCollaboration from "./components/TeamCollaboration";
 import Footer from "../chatAsistant/components/Footer";
 
 interface FeatureCardProps {
@@ -44,7 +47,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
       <div
         className="p-3 rounded-full mr-4"
         style={{
-          backgroundColor: `${color}10`,
+          backgroundColor: `${color}15`,
           color: color,
         }}
       >
@@ -147,6 +150,30 @@ const ProductLandingPage: React.FC = () => {
     },
   ];
 
+  const testimonials = [
+    {
+      name: "Sarah Johnson",
+      position: "Team Lead at TechInnovate",
+      quote:
+        "TeamSync transformed how our team collaborates. We've seen a 40% increase in project completion speed since we started using it.",
+      avatar: "https://randomuser.me/api/portraits/women/44.jpg",
+    },
+    {
+      name: "Michael Chen",
+      position: "Product Manager",
+      quote:
+        "The intuitive interface and powerful features make TeamSync the perfect solution for our distributed team across three time zones.",
+      avatar: "https://randomuser.me/api/portraits/men/32.jpg",
+    },
+    {
+      name: "Priya Sharma",
+      position: "Creative Director",
+      quote:
+        "I love how TeamSync brings our design team together. The real-time document collaboration is a game-changer for our creative process.",
+      avatar: "https://randomuser.me/api/portraits/women/63.jpg",
+    },
+  ];
+
   return (
     <div className="ml-20 min-h-screen bg-white">
       {/* Navbar */}
@@ -160,7 +187,7 @@ const ProductLandingPage: React.FC = () => {
               <span className="mr-2">🚀</span> TeamSync
             </a>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-6">
             <a
               href="#features"
               className="text-gray-700 hover:text-blue-600 transition-colors"
@@ -168,16 +195,29 @@ const ProductLandingPage: React.FC = () => {
               Features
             </a>
             <a
-              href="#pricing"
+              href="#team-collaboration"
               className="text-gray-700 hover:text-blue-600 transition-colors"
             >
-              Pricing
+              Collaboration
+            </a>
+            <a
+              href="#testimonials"
+              className="text-gray-700 hover:text-blue-600 transition-colors"
+            >
+              Testimonials
+            </a>
+            <a
+              href="/learnmore"
+              className="px-8 py-3 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition-all flex items-center font-semibold"
+            >
+              <span className="mr-2">Learn More</span>{" "}
+              <Globe className="w-5 h-5" />
             </a>
             <a
               href="#"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-all"
+              className="px-6 py-2 bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition-all"
             >
-              Get Started
+              Log Out
             </a>
           </div>
         </div>
@@ -238,11 +278,13 @@ const ProductLandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Rest of the content remains the same... */}
+      {/* Team Collaboration Section (Replaces Pricing Section) */}
+      <TeamCollaboration />
+
       {/* Security and Compliance */}
       <section className="container mx-auto px-4 py-16">
-        <div className="flex items-center">
-          <div className="w-1/2 pr-12">
+        <div className="flex flex-col lg:flex-row items-center">
+          <div className="w-full lg:w-1/2 pr-0 lg:pr-12 mb-8 lg:mb-0">
             <h2 className="text-4xl font-bold text-gray-800 mb-6">
               Enterprise-Grade Security
             </h2>
@@ -254,7 +296,8 @@ const ProductLandingPage: React.FC = () => {
                     Advanced Protection
                   </h3>
                   <p className="text-gray-600">
-                    Military-grade encryption and multi-factor authentication.
+                    Military-grade encryption and multi-factor authentication to
+                    keep your team's conversations private.
                   </p>
                 </div>
               </div>
@@ -262,16 +305,17 @@ const ProductLandingPage: React.FC = () => {
                 <Lock className="w-10 h-10 text-green-600 mr-4" />
                 <div>
                   <h3 className="text-xl font-semibold text-gray-800">
-                    Compliance Ready
+                    Data Control
                   </h3>
                   <p className="text-gray-600">
-                    GDPR, HIPAA, and SOC 2 compliant infrastructure.
+                    Control who can access what with granular permissions and
+                    data governance policies.
                   </p>
                 </div>
               </div>
             </div>
           </div>
-          <div className="w-1/2">
+          <div className="w-full lg:w-1/2">
             <div className="bg-white rounded-xl shadow-2xl p-8">
               <PieChart className="w-64 h-64 mx-auto text-blue-500" />
             </div>
@@ -279,29 +323,70 @@ const ProductLandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <PricingPlans />
+      {/* Testimonials Section */}
+      <section id="testimonials" className="bg-gray-50 py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-gray-800 mb-4">
+              Loved by Teams Everywhere
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              See what teams are saying about their experience with TeamSync.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {testimonials.map((testimonial, index) => (
+              <div key={index} className="bg-white rounded-xl shadow-lg p-8">
+                <div className="flex items-center mb-4">
+                  <img
+                    src={testimonial.avatar}
+                    alt={testimonial.name}
+                    className="w-16 h-16 rounded-full mr-4 object-cover"
+                  />
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-800">
+                      {testimonial.name}
+                    </h4>
+                    <p className="text-gray-600">{testimonial.position}</p>
+                  </div>
+                </div>
+                <p className="text-gray-700 italic">"{testimonial.quote}"</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Call to Action */}
       <section className="bg-blue-600 text-white py-16">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold mb-16">
+          <div className="flex justify-center mb-8">
+            <div className="flex space-x-4">
+              <div className="bg-white bg-opacity-20 p-4 rounded-full">
+                <Coffee className="w-8 h-8" />
+              </div>
+              <div className="bg-white bg-opacity-20 p-4 rounded-full">
+                <Users className="w-8 h-8" />
+              </div>
+              <div className="bg-white bg-opacity-20 p-4 rounded-full">
+                <Heart className="w-8 h-8" />
+              </div>
+            </div>
+          </div>
+          <h2 className="text-4xl font-bold mb-6">
             Ready to Transform Your Team?
           </h2>
-          <p className="text-xl mb-8">
-            Start your free trial and experience the power of TeamSync today.
+          <p className="text-xl mb-8 max-w-2xl mx-auto">
+            Join thousands of teams who've already discovered a better way to
+            work together. Start your free trial today.
           </p>
-          <div className="space-x-4">
+          <div>
             <a
-              href="#"
-              className="px-8 py-3 bg-white text-blue-600 rounded-lg shadow-md hover:bg-gray-100 transition-colors"
+              href="/login"
+              className="px-8 py-3 bg-white text-blue-600 rounded-lg shadow-md hover:bg-gray-100 transition-colors font-semibold"
             >
               Start Free Trial
-            </a>
-            <a
-              href="#"
-              className="px-8 py-3 border-2 border-white rounded-lg hover:bg-white hover:text-blue-600 transition-colors"
-            >
-              Watch Demo
             </a>
           </div>
         </div>

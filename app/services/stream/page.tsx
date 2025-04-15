@@ -1,296 +1,216 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import useWebRTC from "@/app/hooks/useWebRTC";
-import { useRouter } from "next/navigation";
-import { Mic, MicOff, Video, VideoOff, PhoneOff } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, RefreshCw } from "lucide-react";
 
-interface StreamPageProps {
-  params: {
-    roomId?: string;
-  };
-}
-
-export default function StreamPage({ params }: StreamPageProps) {
-  const router = useRouter();
-  const [userName, setUserName] = useState("");
-  const [isJoining, setIsJoining] = useState(false);
+export default function StreamPage() {
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [audioOnlyMode, setAudioOnlyMode] = useState(false);
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideosRef = useRef<Record<string, HTMLVideoElement>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  const {
-    localStream,
-    remoteStreams,
-    roomId,
-    participants,
-    isHost,
-    initializeMedia,
-    createRoom,
-    joinRoom,
-    leaveRoom,
-    toggleTrack,
-  } = useWebRTC();
-
-  // Handle media initialization
+  // Initialize camera and microphone
   useEffect(() => {
     const initMedia = async () => {
       try {
-        const audioOnly = await initializeMedia(true, true);
-        setAudioOnlyMode(audioOnly);
-
-        if (audioOnly) {
-          setError(
-            "Camera is in use by another application. You can continue with audio only, or close other applications using the camera and refresh the page."
-          );
-          setShowErrorModal(true);
+        setIsLoading(true);
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
         }
-      } catch (error: any) {
-        console.error("Error initializing media:", error);
 
-        // Check if it's a camera in use error
-        if (
-          error instanceof DOMException &&
-          (error.name === "NotReadableError" || error.name === "AbortError")
-        ) {
-          setError(
-            "Camera is being used by another application. You can continue with audio only."
-          );
-          setAudioOnlyMode(true);
-          setShowErrorModal(true);
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: "user",
+          },
+          audio: true,
+        });
 
-          // Try with audio only
-          try {
-            await initializeMedia(false, true);
-            setError("Connected with audio only. Video is disabled.");
-          } catch (audioError: any) {
-            setError(
-              "Failed to access camera or microphone. Please check your device permissions."
-            );
-          }
-        } else if (
-          error instanceof DOMException &&
-          error.name === "NotAllowedError"
-        ) {
-          setError(
-            "Permission denied. Please allow access to your camera and microphone."
-          );
-          setShowErrorModal(true);
+        streamRef.current = stream;
+        setLocalStream(stream);
+        setIsLoading(false);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current?.play().catch((err) => {
+              console.error("Error playing video:", err);
+            });
+          };
+
+          videoRef.current.onended = () => {
+            if (streamRef.current) {
+              videoRef.current!.srcObject = streamRef.current;
+              videoRef.current?.play().catch((err) => {
+                console.error("Error replaying video:", err);
+              });
+            }
+          };
+        }
+
+        stream.getVideoTracks().forEach((track) => {
+          track.onended = () => {
+            console.log("Video track ended, attempting to restart...");
+            initMedia();
+          };
+        });
+      } catch (error) {
+        setIsLoading(false);
+        console.error("Error accessing media devices:", error);
+        if (error instanceof Error) {
+          setError(error.message);
         } else {
-          setError("Failed to access camera or microphone");
-          setShowErrorModal(true);
+          setError("Failed to access camera and microphone");
         }
       }
     };
 
-    if (!localStream) {
-      initMedia();
-    }
-  }, [initializeMedia, localStream]);
+    initMedia();
 
-  // Handle local video stream
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, []);
+
   useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream as unknown as MediaProvider;
+    if (videoRef.current && localStream) {
+      videoRef.current.srcObject = localStream;
+      videoRef.current.play().catch((err) => {
+        console.error("Error playing video:", err);
+      });
     }
   }, [localStream]);
 
-  // Handle remote video streams
-  useEffect(() => {
-    Object.entries(remoteStreams).forEach(([peerId, stream]) => {
-      const existingVideo = remoteVideosRef.current[peerId];
-
-      if (existingVideo) {
-        // Update existing video element if stream has changed
-        if (existingVideo.srcObject !== stream) {
-          existingVideo.srcObject = stream as unknown as MediaProvider;
-        }
-      } else {
-        // Create a new video element
-        const video = document.createElement("video");
-        video.autoplay = true;
-        video.playsInline = true;
-        video.srcObject = stream as unknown as MediaProvider;
-
-        // Add error handling for video playback
-        video.onloadedmetadata = () => {
-          video.play().catch((err) => {
-            console.warn("Auto-play prevented:", err);
-            // Add a play button or visual indicator here if needed
-          });
-        };
-
-        remoteVideosRef.current[peerId] = video;
+  const toggleVideo = () => {
+    if (streamRef.current) {
+      const videoTrack = streamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsVideoEnabled(videoTrack.enabled);
       }
-    });
-  }, [remoteStreams]);
-
-  // Handle room joining
-  useEffect(() => {
-    if (params.roomId && !roomId && !isJoining && localStream) {
-      setIsJoining(true);
-      joinRoom(
-        params.roomId,
-        userName || `User-${Math.floor(Math.random() * 1000)}`
-      )
-        .catch((error: any) => {
-          console.error("Error joining room:", error);
-          setError(
-            "Failed to join room: " +
-              (error instanceof Error ? error.message : "Unknown error")
-          );
-          setShowErrorModal(true);
-        })
-        .finally(() => {
-          setIsJoining(false);
-        });
-    }
-  }, [params.roomId, roomId, userName, joinRoom, isJoining, localStream]);
-
-  // Toggle audio/video functions
-  const handleToggleVideo = () => {
-    if (audioOnlyMode) {
-      setError(
-        "Video is disabled because your camera is in use by another application"
-      );
-      setShowErrorModal(true);
-      return;
-    }
-
-    toggleTrack("video", !localStream?.getVideoTracks()[0]?.enabled);
-  };
-
-  const handleToggleAudio = () => {
-    toggleTrack("audio", !localStream?.getAudioTracks()[0]?.enabled);
-  };
-
-  // Retry with video
-  const retryWithVideo = async () => {
-    try {
-      await initializeMedia(true, true);
-      setAudioOnlyMode(false);
-      setError(null);
-      setShowErrorModal(false);
-    } catch (error: any) {
-      console.error("Error retrying with video:", error);
-      setError(
-        "Still cannot access camera. Please try closing other applications that might be using it."
-      );
     }
   };
 
-  // Error modal component
-  const ErrorModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full">
-        <h3 className="text-xl font-semibold text-white mb-4">
-          Connection Issue
-        </h3>
-        <p className="text-gray-200 mb-6">{error}</p>
-        <div className="flex flex-col space-y-2">
-          {audioOnlyMode && (
+  const toggleAudio = () => {
+    if (streamRef.current) {
+      const audioTrack = streamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsAudioEnabled(audioTrack.enabled);
+      }
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-4">
+        <div className="bg-gray-800/50 backdrop-blur-lg rounded-2xl p-8 max-w-md w-full shadow-2xl border border-gray-700/50">
+          <div className="text-center space-y-6">
+            <div className="w-20 h-20 mx-auto bg-red-500/10 rounded-full flex items-center justify-center">
+              <VideoOff className="w-10 h-10 text-red-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-white">
+              Camera Access Error
+            </h2>
+            <p className="text-gray-300">{error}</p>
             <button
-              onClick={retryWithVideo}
-              className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded"
+              onClick={() => window.location.reload()}
+              className="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900"
             >
-              Retry with Video
+              Try Again
             </button>
-          )}
-          <button
-            onClick={() => setShowErrorModal(false)}
-            className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded"
-          >
-            Continue Anyway
-          </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  // Loading indicator
-  if (!localStream || isJoining) {
+  if (isLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white text-lg">
-            {isJoining ? "Joining room..." : "Initializing media..."}
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
+        <div className="text-center space-y-6">
+          <div className="relative">
+            <div className="w-24 h-24 border-4 border-blue-500/30 rounded-full animate-spin"></div>
+            <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          </div>
+          <p className="text-white text-lg font-medium">
+            Initializing Camera...
           </p>
-          {error && <p className="text-red-400 mt-2">{error}</p>}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-gray-900 flex flex-col">
-      {/* Error modal */}
-      {showErrorModal && <ErrorModal />}
-
-      <main className="flex-1 relative">
-        <div className="flex flex-col items-center justify-center min-h-screen p-4">
-          <h1 className="text-2xl font-bold mb-4">Join or Create a Stream</h1>
-          <div className="w-full max-w-md space-y-4">
-            <input
-              type="text"
-              placeholder="Enter your name"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-              className="w-full p-2 border rounded"
-            />
-            <div className="flex space-x-4">
-              <button
-                onClick={() => router.push("/")}
-                className="flex-1 p-2 bg-red-500 text-white rounded hover:bg-red-600"
-              >
-                Leave Room
-              </button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
+      <main className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+            <div className="relative bg-gray-800/50 backdrop-blur-lg rounded-2xl overflow-hidden shadow-2xl border border-gray-700/50">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full aspect-video object-cover"
+              />
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gray-900/80 to-transparent p-4">
+                <div className="flex justify-center space-x-4">
+                  <button
+                    onClick={toggleVideo}
+                    className={`p-3 rounded-full transition-all duration-300 transform hover:scale-110 ${
+                      isVideoEnabled
+                        ? "bg-blue-600 hover:bg-blue-700"
+                        : "bg-red-600 hover:bg-red-700"
+                    }`}
+                  >
+                    {isVideoEnabled ? (
+                      <Video className="w-6 h-6 text-white" />
+                    ) : (
+                      <VideoOff className="w-6 h-6 text-white" />
+                    )}
+                  </button>
+                  <button
+                    onClick={toggleAudio}
+                    className={`p-3 rounded-full transition-all duration-300 transform hover:scale-110 ${
+                      isAudioEnabled
+                        ? "bg-blue-600 hover:bg-blue-700"
+                        : "bg-red-600 hover:bg-red-700"
+                    }`}
+                  >
+                    {isAudioEnabled ? (
+                      <Mic className="w-6 h-6 text-white" />
+                    ) : (
+                      <MicOff className="w-6 h-6 text-white" />
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
-            {error && <p className="text-red-500">{error}</p>}
+          </div>
+
+          <div className="mt-8 text-center">
+            <div className="inline-flex items-center space-x-2 bg-gray-800/50 backdrop-blur-lg rounded-xl px-4 py-2">
+              <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
+              <span className="text-gray-300 text-sm">Live Stream Active</span>
+            </div>
           </div>
         </div>
       </main>
-
-      {/* Media controls */}
-      <div className="bg-gray-800 p-4 flex justify-center">
-        <div className="flex space-x-4">
-          <button
-            onClick={handleToggleAudio}
-            className={`p-3 rounded-full ${
-              localStream?.getAudioTracks()[0]?.enabled
-                ? "bg-gray-700 text-white"
-                : "bg-red-600 text-white"
-            }`}
-          >
-            {localStream?.getAudioTracks()[0]?.enabled ? <Mic /> : <MicOff />}
-          </button>
-          <button
-            onClick={handleToggleVideo}
-            className={`p-3 rounded-full ${
-              audioOnlyMode
-                ? "bg-gray-500 text-gray-300 cursor-not-allowed"
-                : localStream?.getVideoTracks()[0]?.enabled
-                ? "bg-gray-700 text-white"
-                : "bg-red-600 text-white"
-            }`}
-            disabled={audioOnlyMode}
-          >
-            {localStream?.getVideoTracks()[0]?.enabled ? (
-              <Video />
-            ) : (
-              <VideoOff />
-            )}
-          </button>
-          <button
-            onClick={() => router.push("/")}
-            className="p-3 rounded-full bg-red-600 text-white"
-          >
-            <PhoneOff />
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

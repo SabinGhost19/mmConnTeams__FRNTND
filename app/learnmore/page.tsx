@@ -269,6 +269,66 @@ const LearnMorePage: React.FC = () => {
     },
   ];
 
+  // Updated and expanded testimonials
+  const testimonials = [
+    {
+      name: "Sarah Johnson",
+      position: "Team Lead at TechInnovate",
+      quote:
+        "TeamSync transformed how our team collaborates. We've seen a 40% increase in project completion speed since we started using it.",
+      avatar: "https://randomuser.me/api/portraits/women/44.jpg",
+    },
+    {
+      name: "Michael Chen",
+      position: "Product Manager at GlobalTech",
+      quote:
+        "The intuitive interface and powerful features make TeamSync the perfect solution for our distributed team across three time zones.",
+      avatar: "https://randomuser.me/api/portraits/men/32.jpg",
+    },
+    {
+      name: "Priya Sharma",
+      position: "Creative Director at DesignWorks",
+      quote:
+        "I love how TeamSync brings our design team together. The real-time document collaboration is a game-changer for our creative process.",
+      avatar: "https://randomuser.me/api/portraits/women/63.jpg",
+    },
+    {
+      name: "David Wilson",
+      position: "CTO at FutureTech Solutions",
+      quote:
+        "Security was our main concern when looking for a collaboration platform. TeamSync exceeded our expectations with their enterprise-grade security features.",
+      avatar: "https://randomuser.me/api/portraits/men/86.jpg",
+    },
+    {
+      name: "Emma Rodriguez",
+      position: "HR Director at GlobalHR",
+      quote:
+        "TeamSync has revolutionized our onboarding process. New team members can get up to speed quickly with access to all our knowledge bases and communication channels.",
+      avatar: "https://randomuser.me/api/portraits/women/28.jpg",
+    },
+    {
+      name: "James Park",
+      position: "Engineering Lead at BuildCorp",
+      quote:
+        "The ability to seamlessly switch between chat, video, and document editing has made our engineering standups and code reviews much more efficient.",
+      avatar: "https://randomuser.me/api/portraits/men/54.jpg",
+    },
+    {
+      name: "Alexandra Kim",
+      position: "Marketing Director at BrandForward",
+      quote:
+        "We coordinate global marketing campaigns through TeamSync. The project management features coupled with real-time collaboration have been invaluable.",
+      avatar: "https://randomuser.me/api/portraits/women/90.jpg",
+    },
+    {
+      name: "Robert Johnson",
+      position: "Operations Manager at LogisticsPro",
+      quote:
+        "The mobile experience is fantastic. I can stay connected with my team whether I'm in the warehouse or on the road visiting clients.",
+      avatar: "https://randomuser.me/api/portraits/men/43.jpg",
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-blue-50 to-white">
       <nav className="fixed top-0 left-20 right-0 bg-white shadow-sm z-50">
@@ -304,6 +364,13 @@ const LearnMorePage: React.FC = () => {
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-600 transition-all group-hover:w-full"></span>
             </a>
             <a
+              href="#testimonials"
+              className="text-gray-700 hover:text-blue-600 transition-colors relative group"
+            >
+              Testimonials
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-600 transition-all group-hover:w-full"></span>
+            </a>
+            <a
               href="#faq"
               className="text-gray-700 hover:text-blue-600 transition-colors relative group"
             >
@@ -311,7 +378,7 @@ const LearnMorePage: React.FC = () => {
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-600 transition-all group-hover:w-full"></span>
             </a>
             <a
-              href="#"
+              href="/login"
               className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg transition-all transform hover:-translate-y-0.5"
             >
               Get Started
@@ -332,14 +399,15 @@ const LearnMorePage: React.FC = () => {
               </h1>
               <p className="text-xl text-gray-600 mb-8 max-w-xl">
                 TeamSync combines messaging, video meetings, file sharing, and
-                project management in a unified and secure platform.
+                project management in a unified and secure platform designed
+                specifically for modern teams who need seamless collaboration.
               </p>
               <div className="flex flex-wrap gap-4">
                 <a
-                  href="#"
+                  href="/login"
                   className="px-8 py-3 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 hover:shadow-xl transition-all transform hover:-translate-y-1"
                 >
-                  Schedule Demo
+                  Get Started Free
                 </a>
                 <a
                   href="#features"
@@ -516,7 +584,7 @@ const LearnMorePage: React.FC = () => {
               </h3>
               <p className="text-gray-600 group-hover:text-gray-700 transition-colors">
                 Simultaneous document editing and file sharing without
-                interruptions.
+                interruptions to keep your team in perfect sync at all times.
               </p>
             </div>
 
@@ -541,6 +609,12 @@ const LearnMorePage: React.FC = () => {
                   <h3 className="text-3xl font-bold text-gray-900 mb-6 group-hover:text-blue-600 transition-colors">
                     Complete Platform for Productive Teams
                   </h3>
+                  <p className="text-gray-600 mb-6">
+                    TeamSync is the ultimate collaboration solution that brings
+                    together everything your team needs to communicate
+                    effectively, share ideas, and stay organized - all in one
+                    beautiful, intuitive interface.
+                  </p>
                   <ul className="space-y-4">
                     <li className="flex items-start group/item">
                       <div className="flex-shrink-0 mt-0.5">
@@ -698,6 +772,47 @@ const LearnMorePage: React.FC = () => {
         </div>
       </section>
 
+      {/* Expanded Testimonials Section */}
+      <section id="testimonials" className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-800 mb-4">
+              What Our Customers Say
+            </h2>
+            <p className="text-xl text-gray-600">
+              Don't just take our word for it - see what teams of all sizes love
+              about TeamSync
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {testimonials.map((testimonial, index) => (
+              <div
+                key={index}
+                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
+              >
+                <div className="flex items-center mb-4">
+                  <img
+                    src={testimonial.avatar}
+                    alt={testimonial.name}
+                    className="w-12 h-12 rounded-full mr-4 object-cover"
+                  />
+                  <div>
+                    <h4 className="font-semibold text-gray-800">
+                      {testimonial.name}
+                    </h4>
+                    <p className="text-gray-600 text-sm">
+                      {testimonial.position}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-gray-700 italic">"{testimonial.quote}"</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* FAQ Section */}
       <section id="faq" className="py-20 bg-gray-50">
         <div className="container mx-auto px-4">
@@ -754,237 +869,22 @@ const LearnMorePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Call to Action */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-blue-800 text-white relative overflow-hidden group">
-        <div className="absolute inset-0 bg-blue-600 opacity-0 group-hover:opacity-20 transition-opacity duration-700"></div>
-        <div className="container mx-auto px-4 text-center relative z-10">
-          <h2 className="text-4xl font-bold mb-6 transform group-hover:scale-105 transition-transform">
-            Ready to discover TeamSync's full potential?
-          </h2>
-          <p className="text-xl mb-10 max-w-3xl mx-auto">
-            Join thousands of teams who have transformed their way of working
-            with our complete collaboration platform.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <a
-              href="#"
-              className="px-8 py-4 bg-white text-blue-700 rounded-lg shadow-lg hover:bg-gray-100 transition-all transform hover:-translate-y-1 hover:shadow-xl font-medium"
-            >
-              Start Free - 30 Days
-            </a>
-            <a
-              href="#"
-              className="px-8 py-4 border-2 border-white rounded-lg hover:bg-white hover:text-blue-700 transition-all transform hover:-translate-y-1 font-medium"
-            >
-              Schedule Custom Demo
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Carousel */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              What Our Customers Say
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Discover real experiences from customers using TeamSync.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-xl p-8 max-w-5xl mx-auto hover:shadow-2xl transition-all transform hover:-translate-y-1 group">
-            <div className="flex flex-col md:flex-row">
-              <div className="md:w-1/3 mb-6 md:mb-0 md:pr-8">
-                <img
-                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80"
-                  alt="Maria Rodriguez"
-                  className="w-24 h-24 rounded-full mx-auto mb-4 object-cover transform group-hover:scale-110 transition-transform border-2 border-transparent group-hover:border-blue-300"
-                />
-                <h3 className="text-xl font-semibold text-center group-hover:text-blue-600 transition-colors">
-                  Maria Rodriguez
-                </h3>
-                <p className="text-gray-600 text-center">
-                  CTO, Global Innovations
-                </p>
-                <div className="flex justify-center mt-4">
-                  <div className="flex text-yellow-400">
-                    <span>★</span>
-                    <span>★</span>
-                    <span>★</span>
-                    <span>★</span>
-                    <span>★</span>
-                  </div>
-                </div>
-              </div>
-              <div className="md:w-2/3 flex items-center">
-                <blockquote className="text-xl text-gray-700 italic">
-                  "TeamSync has revolutionized how our teams collaborate.
-                  Communication is much more efficient, and the ability to
-                  integrate all our existing tools has allowed us to eliminate
-                  information silos and accelerate processes. The platform is
-                  incredibly easy to use, and the support team was outstanding
-                  during implementation."
-                  <div className="mt-6 flex items-center">
-                    <Clock className="w-5 h-5 text-gray-400 mr-2 group-hover:text-blue-500 transition-colors" />
-                    <span className="text-sm text-gray-500 group-hover:text-blue-500 transition-colors">
-                      Using TeamSync for 2 years
-                    </span>
-                  </div>
-                </blockquote>
-              </div>
-            </div>
-            <div className="flex justify-center mt-8">
-              <div className="flex space-x-2">
-                <button className="w-3 h-3 rounded-full bg-blue-600 group-hover:scale-125 transition-transform"></button>
-                <button className="w-3 h-3 rounded-full bg-gray-300 hover:bg-blue-400 transition-colors"></button>
-                <button className="w-3 h-3 rounded-full bg-gray-300 hover:bg-blue-400 transition-colors"></button>
-                <button className="w-3 h-3 rounded-full bg-gray-300 hover:bg-blue-400 transition-colors"></button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Statistics */}
-      <section className="py-20 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8 text-center">
-            <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-2 hover:bg-blue-50 group">
-              <div className="text-4xl font-bold text-blue-600 mb-2 group-hover:scale-110 transition-transform">
-                12,000+
-              </div>
-              <div className="text-gray-700 font-medium group-hover:text-blue-700 transition-colors">
-                Active Organizations
-              </div>
-            </div>
-            <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-2 hover:bg-blue-50 group">
-              <div className="text-4xl font-bold text-blue-600 mb-2 group-hover:scale-110 transition-transform">
-                98%
-              </div>
-              <div className="text-gray-700 font-medium group-hover:text-blue-700 transition-colors">
-                Retention Rate
-              </div>
-            </div>
-            <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-2 hover:bg-blue-50 group">
-              <div className="text-4xl font-bold text-blue-600 mb-2 group-hover:scale-110 transition-transform">
-                3.2M
-              </div>
-              <div className="text-gray-700 font-medium group-hover:text-blue-700 transition-colors">
-                Active Users
-              </div>
-            </div>
-            <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-2 hover:bg-blue-50 group">
-              <div className="text-4xl font-bold text-blue-600 mb-2 group-hover:scale-110 transition-transform">
-                99.9%
-              </div>
-              <div className="text-gray-700 font-medium group-hover:text-blue-700 transition-colors">
-                Guaranteed Uptime
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Resource Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Resources & Support
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Learn how to use TeamSync to its full potential.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-2 group">
-              <div className="h-48 bg-gray-200 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                <FileText className="w-16 h-16 text-gray-400 group-hover:text-blue-600 group-hover:scale-110 transition-all" />
-              </div>
-              <div className="p-6">
-                <h3 className="text-xl font-semibold mb-3 group-hover:text-blue-600 transition-colors">
-                  Documentation Center
-                </h3>
-                <p className="text-gray-600 mb-4 group-hover:text-gray-700 transition-colors">
-                  Detailed guides, tutorials, and information about all TeamSync
-                  features.
-                </p>
-                <a
-                  href="#"
-                  className="text-blue-600 font-medium flex items-center hover:text-blue-800 group/link"
-                >
-                  Explore Documentation
-                  <ArrowRight className="ml-2 w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
-                </a>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-2 group">
-              <div className="h-48 bg-gray-200 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                <Video className="w-16 h-16 text-gray-400 group-hover:text-blue-600 group-hover:scale-110 transition-all" />
-              </div>
-              <div className="p-6">
-                <h3 className="text-xl font-semibold mb-3 group-hover:text-blue-600 transition-colors">
-                  Video Tutorials
-                </h3>
-                <p className="text-gray-600 mb-4 group-hover:text-gray-700 transition-colors">
-                  Learn visually with step-by-step guided tutorials for all
-                  experience levels.
-                </p>
-                <a
-                  href="#"
-                  className="text-blue-600 font-medium flex items-center hover:text-blue-800 group/link"
-                >
-                  Watch Tutorials
-                  <ArrowRight className="ml-2 w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
-                </a>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-2 group">
-              <div className="h-48 bg-gray-200 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                <Users className="w-16 h-16 text-gray-400 group-hover:text-blue-600 group-hover:scale-110 transition-all" />
-              </div>
-              <div className="p-6">
-                <h3 className="text-xl font-semibold mb-3 group-hover:text-blue-600 transition-colors">
-                  TeamSync Community
-                </h3>
-                <p className="text-gray-600 mb-4 group-hover:text-gray-700 transition-colors">
-                  Connect with other users, share ideas, and discover best
-                  practices.
-                </p>
-                <a
-                  href="#"
-                  className="text-blue-600 font-medium flex items-center hover:text-blue-800 group/link"
-                >
-                  Join the Community
-                  <ArrowRight className="ml-2 w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Final CTA */}
-      <section className="py-24 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556761175-b413da4baf72?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1374&q=80')] opacity-10 bg-cover bg-center mix-blend-overlay hover:opacity-20 transition-opacity duration-700"></div>
-        <div className="container mx-auto px-4 text-center relative z-10">
-          <h2 className="text-5xl font-bold mb-8 hover:scale-105 transition-transform">
-            Transform Your Team with TeamSync
+      <section className="py-16 bg-blue-600 text-white">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl font-bold mb-6">
+            Ready to Transform Your Team's Collaboration?
           </h2>
-          <p className="text-xl mb-12 max-w-3xl mx-auto">
-            Improve communication, streamline collaboration, and boost
-            productivity with the complete platform for modern teams.
+          <p className="text-xl mb-8 max-w-2xl mx-auto">
+            Join thousands of teams who have already discovered a better way to
+            work together. Experience the TeamSync difference today with our
+            user-friendly platform designed for teams of all sizes.
           </p>
           <a
-            href="#"
-            className="px-10 py-4 bg-white text-blue-700 rounded-lg text-xl font-medium shadow-lg hover:bg-blue-50 transition-all transform hover:-translate-y-1 hover:scale-105 hover:shadow-xl inline-block"
+            href="/login"
+            className="inline-block px-8 py-3 bg-white text-blue-600 rounded-lg shadow-md hover:bg-gray-100 transition-colors font-semibold text-lg"
           >
-            Start Your TeamSync Journey
+            Get Started Now
           </a>
         </div>
       </section>

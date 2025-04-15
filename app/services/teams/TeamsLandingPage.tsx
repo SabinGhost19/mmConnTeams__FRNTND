@@ -20,6 +20,26 @@ import { NewEventWithAttendees } from "@/app/types/models_types/eventTypes";
 import { createEvent } from "@/app/services/api/eventService";
 import { createBackwardCompatibleUser } from "@/app/lib/userUtils";
 import { useAuth } from "@/app/contexts/auth-context";
+import { motion, AnimatePresence } from "framer-motion";
+import { useMediaQuery } from "react-responsive";
+import {
+  FiUsers,
+  FiMessageSquare,
+  FiCalendar,
+  FiFile,
+  FiPlus,
+  FiChevronRight,
+} from "react-icons/fi";
+import { BsThreeDotsVertical } from "react-icons/bs";
+
+// Enum pentru a gestiona diferitele view-uri posibile
+export enum ViewType {
+  OVERVIEW = "overview",
+  TEAM_DETAIL = "team_detail",
+  CHANNEL = "channel",
+  CHAT = "chat",
+  FILES = "files",
+}
 
 interface TeamsLandingPageProps {
   initialTeams: Team[];
@@ -49,14 +69,6 @@ interface InviteData {
   message: string;
 }
 
-// Enum pentru a gestiona diferitele view-uri posibile
-enum ViewType {
-  OVERVIEW = "overview",
-  TEAM_DETAIL = "team_detail",
-  CHANNEL = "channel",
-  CHAT = "chat",
-}
-
 // Interface pentru datele de editare a canalului
 interface EditChannelData {
   name: string;
@@ -70,27 +82,30 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
   initialFiles,
 }) => {
   const router = useRouter();
-  const { user: currentUser } = useAuth(); // Obținem utilizatorul curent
+  const { user } = useAuth();
+  const isMobile = useMediaQuery({ maxWidth: 768 });
+
   const [teams, setTeams] = useState<Team[]>(initialTeams);
   const [users, setUsers] = useState<UserTeam[]>(initialUsers);
   const [events, setEvents] = useState<Event[]>(initialEvents);
   const [files, setFiles] = useState<File[]>(initialFiles);
-
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedView, setSelectedView] = useState<ViewType>(ViewType.OVERVIEW);
   const [currentView, setCurrentView] = useState<ViewType>(ViewType.OVERVIEW);
-  const [selectedView, setSelectedView] = useState<string>("overview");
-
   const [showCreateTeamModal, setShowCreateTeamModal] = useState(false);
   const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
   const [showInviteUserModal, setShowInviteUserModal] = useState(false);
   const [showEditChannelModal, setShowEditChannelModal] = useState(false);
-  const [editChannelData, setEditChannelData] = useState<EditChannelData>({
-    name: "",
-    description: "",
-  });
   const [isUpdatingChannel, setIsUpdatingChannel] = useState(false);
+  const [editChannelData, setEditChannelData] = useState<{
+    name: string;
+    description: string;
+  }>({ name: "", description: "" });
+
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
 
   const onFileUpload = async (
     file: Blob,
@@ -233,16 +248,14 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
     router.push(`/chat?userId=${userId}`);
   };
 
-  const handleJoinChannel = (teamId: string, channelId: string) => {
-    const team = teams.find((t: Team) => t.id === teamId);
-    if (team) {
-      setSelectedTeam(team);
-
-      const channel = team.channels?.find((c: Channel) => c.id === channelId);
-      if (channel) {
-        setSelectedChannel(channel);
-        setCurrentView(ViewType.CHANNEL);
-      }
+  const handleJoinChannel = async (teamId: string, channelId: string) => {
+    try {
+      await axios.post(`/api/teams/${teamId}/channels/${channelId}/join`);
+      // Refresh team data
+      const response = await axios.get<Team>(`/api/teams/${teamId}`);
+      setSelectedTeam(response.data);
+    } catch (error) {
+      console.error("Error joining channel:", error);
     }
   };
 
@@ -509,312 +522,387 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
     }
   };
 
+  const handleChangeView = (view: ViewType) => {
+    setSelectedView(view);
+  };
+
+  const handleAddMember = async (userId: string) => {
+    if (!selectedTeam) return;
+    try {
+      await axios.post(`/api/teams/${selectedTeam.id}/members`, { userId });
+      // Refresh team data
+      const response = await axios.get<Team>(`/api/teams/${selectedTeam.id}`);
+      setSelectedTeam(response.data);
+    } catch (error) {
+      console.error("Error adding member:", error);
+    }
+  };
+
+  const handleRemoveMember = async (userId: string) => {
+    if (!selectedTeam) return;
+    try {
+      await axios.delete(`/api/teams/${selectedTeam.id}/members/${userId}`);
+      // Refresh team data
+      const response = await axios.get<Team>(`/api/teams/${selectedTeam.id}`);
+      setSelectedTeam(response.data);
+    } catch (error) {
+      console.error("Error removing member:", error);
+    }
+  };
+
+  const handleUpdateMemberRole = async (userId: string, role: string) => {
+    if (!selectedTeam) return;
+    try {
+      await axios.put(`/api/teams/${selectedTeam.id}/members/${userId}/role`, {
+        role,
+      });
+      // Refresh team data
+      const response = await axios.get<Team>(`/api/teams/${selectedTeam.id}`);
+      setSelectedTeam(response.data);
+    } catch (error) {
+      console.error("Error updating member role:", error);
+    }
+  };
+
+  const handleUploadFile = async (file: File) => {
+    if (!selectedTeam) return;
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      await axios.post(`/api/teams/${selectedTeam.id}/files`, formData);
+      // Refresh files
+      const response = await axios.get<File[]>(
+        `/api/teams/${selectedTeam.id}/files`
+      );
+      setFiles(response.data);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+    }
+  };
+
+  const handleDeleteFile = async (fileId: string) => {
+    if (!selectedTeam) return;
+    try {
+      await axios.delete(`/api/teams/${selectedTeam.id}/files/${fileId}`);
+      // Refresh files
+      const response = await axios.get<File[]>(
+        `/api/teams/${selectedTeam.id}/files`
+      );
+      setFiles(response.data);
+    } catch (error) {
+      console.error("Error deleting file:", error);
+    }
+  };
+
+  const handleShareFile = async (fileId: string, userIds: string[]) => {
+    if (!selectedTeam) return;
+    try {
+      await axios.post(`/api/teams/${selectedTeam.id}/files/${fileId}/share`, {
+        userIds,
+      });
+    } catch (error) {
+      console.error("Error sharing file:", error);
+    }
+  };
+
+  const handleScheduleEvent = async (event: Event) => {
+    if (!selectedTeam) return;
+    try {
+      await axios.post(`/api/teams/${selectedTeam.id}/events`, event);
+      // Refresh events
+      const response = await axios.get<Event[]>(
+        `/api/teams/${selectedTeam.id}/events`
+      );
+      setEvents(response.data);
+    } catch (error) {
+      console.error("Error scheduling event:", error);
+    }
+  };
+
+  const handleUpdateEvent = async (
+    eventId: string,
+    updates: Partial<Event>
+  ) => {
+    if (!selectedTeam) return;
+    try {
+      await axios.put(
+        `/api/teams/${selectedTeam.id}/events/${eventId}`,
+        updates
+      );
+      // Refresh events
+      const response = await axios.get<Event[]>(
+        `/api/teams/${selectedTeam.id}/events`
+      );
+      setEvents(response.data);
+    } catch (error) {
+      console.error("Error updating event:", error);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!selectedTeam) return;
+    try {
+      await axios.delete(`/api/teams/${selectedTeam.id}/events/${eventId}`);
+      // Refresh events
+      const response = await axios.get<Event[]>(
+        `/api/teams/${selectedTeam.id}/events`
+      );
+      setEvents(response.data);
+    } catch (error) {
+      console.error("Error deleting event:", error);
+    }
+  };
+
+  const handleJoinEvent = async (eventId: string) => {
+    if (!selectedTeam) return;
+    try {
+      await axios.post(`/api/teams/${selectedTeam.id}/events/${eventId}/join`);
+      // Refresh events
+      const response = await axios.get<Event[]>(
+        `/api/teams/${selectedTeam.id}/events`
+      );
+      setEvents(response.data);
+    } catch (error) {
+      console.error("Error joining event:", error);
+    }
+  };
+
+  const handleLeaveEvent = async (eventId: string) => {
+    if (!selectedTeam) return;
+    try {
+      await axios.post(`/api/teams/${selectedTeam.id}/events/${eventId}/leave`);
+      // Refresh events
+      const response = await axios.get<Event[]>(
+        `/api/teams/${selectedTeam.id}/events`
+      );
+      setEvents(response.data);
+    } catch (error) {
+      console.error("Error leaving event:", error);
+    }
+  };
+
+  const handleEnterTeam = async (teamId: string) => {
+    try {
+      await axios.post(`/api/teams/${teamId}/join`);
+      // Refresh teams
+      const response = await axios.get<Team[]>("/api/teams");
+      setTeams(response.data);
+    } catch (error) {
+      console.error("Error entering team:", error);
+    }
+  };
+
+  const handleLeaveTeam = async (teamId: string) => {
+    try {
+      await axios.post(`/api/teams/${teamId}/leave`);
+      // Refresh teams
+      const response = await axios.get<Team[]>("/api/teams");
+      setTeams(response.data);
+      setSelectedTeam(null);
+    } catch (error) {
+      console.error("Error leaving team:", error);
+    }
+  };
+
+  const handleUpdateTeam = async (updates: Partial<Team>) => {
+    if (!selectedTeam) return;
+    try {
+      await axios.put(`/api/teams/${selectedTeam.id}`, updates);
+      // Refresh team data
+      const response = await axios.get<Team>(`/api/teams/${selectedTeam.id}`);
+      setSelectedTeam(response.data);
+    } catch (error) {
+      console.error("Error updating team:", error);
+    }
+  };
+
+  const handleDeleteTeam = async (teamId: string) => {
+    try {
+      await axios.delete(`/api/teams/${teamId}`);
+      // Refresh teams
+      const response = await axios.get<Team[]>("/api/teams");
+      setTeams(response.data);
+      setSelectedTeam(null);
+    } catch (error) {
+      console.error("Error deleting team:", error);
+    }
+  };
+
   const renderMainContent = () => {
     switch (currentView) {
       case ViewType.TEAM_DETAIL:
-        if (!selectedTeam) return null;
-        return (
-          <TeamDetailView
-            team={selectedTeam}
-            users={users}
-            events={(events || []).filter(
-              (e) => e && e.teamId && e.teamId === selectedTeam.id
-            )}
-            files={(files || []).filter(
-              (f) => f && f.teamId && f.teamId === selectedTeam.id
-            )}
-            selectedView={selectedView}
-            onChangeView={setSelectedView}
-            onStartChat={handleStartChat}
-            onJoinChannel={handleJoinChannel}
-            onCreateChannel={() => setShowCreateChannelModal(true)}
-            onInviteUser={() => setShowInviteUserModal(true)}
-            onSelectChannel={handleSelectChannel}
-            onCreateEvent={handleCreateEvent}
-            onEnterTeamById={onEnterTeamById}
-            onFileUpload={onFileUpload}
-          />
-        );
-
+        return selectedTeam ? (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <TeamDetailView
+              team={selectedTeam}
+              users={users}
+              events={events}
+              files={files}
+              selectedView={selectedView}
+              onChangeView={handleChangeView}
+              onSelectChannel={handleSelectChannel}
+              onJoinChannel={handleJoinChannel}
+              onCreateChannel={() => setShowCreateChannelModal(true)}
+              onInviteUser={() => setShowInviteUserModal(true)}
+              onStartChat={handleStartChat}
+              onCreateEvent={handleCreateEvent}
+              onFileUpload={onFileUpload}
+              onAddMember={handleAddMember}
+              onRemoveMember={handleRemoveMember}
+              onUpdateMemberRole={handleUpdateMemberRole}
+              onUploadFile={handleUploadFile}
+              onDeleteFile={handleDeleteFile}
+              onShareFile={handleShareFile}
+              onScheduleEvent={handleScheduleEvent}
+              onUpdateEvent={handleUpdateEvent}
+              onDeleteEvent={handleDeleteEvent}
+              onJoinEvent={handleJoinEvent}
+              onLeaveEvent={handleLeaveEvent}
+              onEnterTeam={handleEnterTeam}
+              onLeaveTeam={handleLeaveTeam}
+              onUpdateTeam={handleUpdateTeam}
+              onDeleteTeam={handleDeleteTeam}
+            />
+          </motion.div>
+        ) : null;
       case ViewType.CHANNEL:
-        if (!selectedTeam || !selectedChannel) return null;
-
-        // Obține mesajele pentru canalul selectat
-        const channelMessages =
-          messages.filter(
-            (message: { channelId: string }) =>
-              message.channelId === selectedChannel.id
-          ) || [];
-
-        // Calculează numărul de utilizatori online
-        console.log("Users data:", users);
-        console.log("Type of users:", typeof users);
-        const onlineUsersCount = Array.isArray(users)
-          ? users.filter((user) => user?.status === "ONLINE").length
-          : 0;
-
-        // Verifică dacă utilizatorul curent este creatorul canalului
-        const isChannelCreator = currentUser?.id === selectedChannel.creatorId;
-        console.log("Current user ID:", currentUser?.id);
-        console.log("Channel creator ID:", selectedChannel.creatorId);
-        console.log("Is channel creator:", isChannelCreator);
-
-        return (
-          <div className="flex flex-col h-full overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50">
-            {/* Header modern cu efect de glassmorphism */}
-            <div className="flex items-center p-4 backdrop-blur-md bg-white/70 border-b border-gray-200 shadow-sm">
-              <button
-                onClick={() => setCurrentView(ViewType.TEAM_DETAIL)}
-                className="mr-4 p-2 rounded-full text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 transition-all duration-200"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
-              <div className="flex items-center">
-                <div className="relative">
-                  <span className="absolute inset-0 rounded-md bg-indigo-500 opacity-10"></span>
-                  <span className="relative flex h-3 w-3 mr-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
-                  </span>
-                </div>
-                <h2 className="text-xl font-bold text-gray-800">
-                  {selectedTeam.name}{" "}
-                  <span className="text-indigo-500 mx-2">/</span>{" "}
-                  <span className="font-semibold">{selectedChannel.name}</span>
-                </h2>
-              </div>
-
-              <div className="ml-auto flex items-center space-x-4">
-                <div className="flex -space-x-2">
-                  {Array.isArray(users) &&
-                    users.slice(0, 3).map((user, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={`https://ui-avatars.com/api/?name=${user.firstName}+${user.lastName}&background=0D8ABC&color=fff`}
-                          alt={`${user.firstName} ${user.lastName}`}
-                          className="w-8 h-8 rounded-full border-2 border-white"
-                        />
-                        {user.status === "ONLINE" && (
-                          <span className="absolute bottom-0 right-0 block h-2 w-2 rounded-full bg-green-400 ring-1 ring-white"></span>
-                        )}
-                      </div>
-                    ))}
-                  {Array.isArray(users) && users.length > 3 && (
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-800 text-xs font-medium border-2 border-white">
-                      +{users.length - 3}
-                    </div>
-                  )}
-                </div>
-                <div className="text-sm font-medium text-gray-600">
-                  <span className="text-green-500">{onlineUsersCount}</span> /{" "}
-                  {Array.isArray(users) ? users.length : 0} online
-                </div>
-              </div>
-            </div>
-
-            {/* Conținut principal - placehoder elegant */}
-            <div className="flex-1 flex items-center justify-center p-8 overflow-hidden">
-              <div className="max-w-md w-full p-8 bg-white rounded-xl shadow-lg text-center">
-                <div className="inline-flex p-4 mb-6 rounded-full bg-indigo-100">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-10 w-10 text-indigo-600"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                  Canalul {selectedChannel.name}
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Acest canal are {channelMessages.length} mesaje și{" "}
-                  {Array.isArray(users) ? users.length : 0} membri. Conținutul
-                  canalului este dezactivat momentan.
-                </p>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => {
-                      setEditChannelData({
-                        name: selectedChannel.name,
-                        description: selectedChannel.description,
-                      });
-                      setShowEditChannelModal(true);
-                    }}
-                    className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 mr-2"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                    </svg>
-                    Editare canal
-                  </button>
-
-                  {/* Afișează butonul de administrare canal doar dacă utilizatorul curent este creatorul canalului */}
-                  {isChannelCreator && (
-                    <button className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 mr-2"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Administrare canal
-                    </button>
-                  )}
-
-                  <button className="w-full py-2 px-4 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-lg transition duration-200 flex items-center justify-center">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 mr-2 text-gray-500"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Administrare membri
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case ViewType.CHAT:
-        // Since we're redirecting, this shouldn't be rendered
-        // but we'll keep it as a fallback
-        const chatUser = users.find((u) => u.id === selectedUserId);
-        if (!chatUser) return null;
-
-        // Redirect to chat page
-        router.push(`/chat?userId=${selectedUserId}`);
-
-        // Return loading state while redirecting
-        return (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div
-                className="spinner-border inline-block w-8 h-8 border-4 rounded-full text-blue-600 mb-4"
-                role="status"
-              >
-                <span className="visually-hidden">Redirecting...</span>
-              </div>
-              <p>Se redirecționează către chat...</p>
-            </div>
-          </div>
-        );
-
+        return selectedChannel ? (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <ChannelHeader
+              team={selectedTeam}
+              channel={selectedChannel}
+              onlineUsers={users.filter((u) => u.status === "ONLINE").length}
+              totalUsers={users.length}
+            />
+            {/* Add your channel content here */}
+          </motion.div>
+        ) : null;
       case ViewType.OVERVIEW:
-      default:
         return (
-          <TeamsOverview
-            teams={teams}
-            users={users}
-            onSelectTeam={handleSelectTeam}
-            onStartChat={handleStartChat}
-            onJoinChannel={handleJoinChannel}
-            onCreateTeam={() => setShowCreateTeamModal(true)}
-            onEnterTeamById={onEnterTeamById}
-          />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <TeamsOverview
+              teams={teams}
+              users={users}
+              teamFiles={files}
+              onSelectTeam={handleSelectTeam}
+              onStartChat={handleStartChat}
+              onJoinChannel={handleJoinChannel}
+              onCreateTeam={() => setShowCreateTeamModal(true)}
+            />
+          </motion.div>
         );
+      default:
+        return null;
     }
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-50">
       <Head>
-        <title>Teams - Colaborare | Aplicația Ta</title>
+        <title>Teams | Modern Collaboration Platform</title>
         <meta
           name="description"
-          content="Gestionează echipele,  ele și colaborarea în cadrul organizației tale"
+          content="Collaborate with your team members efficiently"
         />
-        <meta name="darkreader-lock" content="true" />
       </Head>
 
-      <div className="flex h-screen bg-white overflow-hidden">
+      <div className="flex h-screen overflow-hidden">
         {/* Sidebar */}
-        <TeamsSidebar
-          teams={teams}
-          selectedTeamId={selectedTeam?.id as string}
-          onSelectTeam={handleSelectTeam}
-          onCreateTeam={() => setShowCreateTeamModal(true)}
-          onBackToOverview={handleBackToOverview}
-        />
+        <AnimatePresence>
+          {isSidebarOpen && (
+            <motion.div
+              initial={{ x: -300, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -300, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className={`fixed md:relative z-30 w-72 h-full bg-white shadow-lg border-r border-gray-200`}
+            >
+              <TeamsSidebar
+                teams={teams}
+                selectedTeamId={selectedTeam?.id || null}
+                onSelectTeam={handleSelectTeam}
+                onCreateTeam={() => setShowCreateTeamModal(true)}
+                onBackToOverview={handleBackToOverview}
+                isMobile={isMobile}
+                onClose={() => setIsSidebarOpen(false)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Main Content */}
-        <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Main content will be rendered here */}
-          {renderMainContent()}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Mobile Header */}
+          {isMobile && (
+            <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200">
+              <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="p-2 rounded-lg hover:bg-gray-100"
+              >
+                <BsThreeDotsVertical className="w-6 h-6 text-gray-600" />
+              </button>
+              <h1 className="text-xl font-semibold text-gray-800">Teams</h1>
+              <div className="w-10" /> {/* Spacer for alignment */}
+            </div>
+          )}
+
+          {/* Main Content Area */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 overflow-y-auto p-4 md:p-6"
+          >
+            {renderMainContent()}
+          </motion.div>
         </div>
       </div>
 
       {/* Modals */}
-      {showCreateTeamModal && (
-        <CreateTeamModal
-          onClose={() => setShowCreateTeamModal(false)}
-          onSubmit={handleCreateTeam}
-        />
-      )}
-
-      {showCreateChannelModal && selectedTeam && (
-        <CreateChannelModal
-          teamId={selectedTeam.id}
-          onClose={() => setShowCreateChannelModal(false)}
-          onSubmit={handleCreateChannel}
-        />
-      )}
-
-      {showInviteUserModal && selectedTeam && (
-        <InviteUserModal
-          teamId={selectedTeam.id}
-          teamName={selectedTeam.name}
-          onClose={() => setShowInviteUserModal(false)}
-          onSubmit={handleInviteUser}
-        />
-      )}
-
-      {/* Modal pentru editarea canalului */}
-      {showEditChannelModal && selectedChannel && (
-        <EditChannelModal
-          channel={selectedChannel}
-          onClose={() => setShowEditChannelModal(false)}
-          onSubmit={handleUpdateChannel}
-          isUpdating={isUpdatingChannel}
-        />
-      )}
-    </>
+      <AnimatePresence>
+        {showCreateTeamModal && (
+          <CreateTeamModal
+            onClose={() => setShowCreateTeamModal(false)}
+            onSubmit={handleCreateTeam}
+          />
+        )}
+        {showCreateChannelModal && selectedTeam && (
+          <CreateChannelModal
+            teamId={selectedTeam.id}
+            onClose={() => setShowCreateChannelModal(false)}
+            onSubmit={handleCreateChannel}
+          />
+        )}
+        {showInviteUserModal && selectedTeam && (
+          <InviteUserModal
+            teamId={selectedTeam.id}
+            teamName={selectedTeam.name}
+            onClose={() => setShowInviteUserModal(false)}
+            onInviteUser={handleInviteUser}
+          />
+        )}
+        {showEditChannelModal && selectedChannel && (
+          <EditChannelModal
+            channel={selectedChannel}
+            onClose={() => setShowEditChannelModal(false)}
+            onSubmit={handleUpdateChannel}
+            isUpdating={isUpdatingChannel}
+          />
+        )}
+      </AnimatePresence>
+    </div>
   );
 };
 

@@ -25,12 +25,10 @@ const AdminPage = () => {
         ) {
           setIsAdmin(true);
         } else {
-          // Not an admin, redirect to home
           router.push("/");
         }
       } catch (error) {
         console.error("Error checking admin status:", error);
-        // Error occurred, redirect to login
         router.push("/login");
       } finally {
         setIsLoading(false);
@@ -49,7 +47,7 @@ const AdminPage = () => {
   }
 
   if (!isAdmin) {
-    return null; // Redirect in progress
+    return null;
   }
 
   return <AdminLandingPage />;

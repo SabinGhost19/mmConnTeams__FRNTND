@@ -14,6 +14,7 @@ interface ChannelListProps {
   channels?: Channel[]; // Facem channels optional
   onJoinChannel: (teamId: string, channelId: string) => void;
   onCreateChannel: () => void;
+  onSelectChannel: (channelId: string) => void;
 }
 
 const ChannelList: React.FC<ChannelListProps> = ({
@@ -21,6 +22,7 @@ const ChannelList: React.FC<ChannelListProps> = ({
   channels = [], // Valoare implicită array gol
   onJoinChannel,
   onCreateChannel,
+  onSelectChannel,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("activity");
