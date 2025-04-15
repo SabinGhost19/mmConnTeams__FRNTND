@@ -567,16 +567,11 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
   const handleUploadFile = async (file: File) => {
     if (!selectedTeam) return;
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      await axios.post(`/api/teams/${selectedTeam.id}/files`, formData);
-      // Refresh files
-      const response = await axios.get<File[]>(
-        `/api/teams/${selectedTeam.id}/files`
-      );
-      setFiles(response.data);
+      // Remove the duplicate upload logic since it's handled in TeamFiles.tsx
+      // Just update the local state with the new file
+      setFiles((prevFiles) => [...prevFiles, file]);
     } catch (error) {
-      console.error("Error uploading file:", error);
+      console.error("Error handling file upload:", error);
     }
   };
 

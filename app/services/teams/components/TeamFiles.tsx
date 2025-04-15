@@ -1,54 +1,128 @@
 // components/TeamsLanding/TeamFiles.tsx
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { getFullName, getAvatarUrl } from "@/app/lib/userUtils";
+import FileUploadModal from "./FileUploadModal";
 import File from "@/app/types/models_types/file";
+import { api } from "@/app/lib/api";
+import { useAuth } from "@/app/contexts/auth-context";
 
 interface TeamFilesProps {
   teamId: string;
-  files: File[];
   channels: any[];
   members: any[];
-  onFileUpload?: (
-    file: Blob,
-    teamId: string,
-    channelId: string
-  ) => Promise<any>;
-  isLoading?: boolean;
-  onUploadFile: (file: File) => void;
-  onDeleteFile: (fileId: string) => void;
-  onDownloadFile: (fileId: string) => void;
-  onShareFile: (fileId: string, userIds: string[]) => void;
 }
 
 const TeamFiles: React.FC<TeamFilesProps> = ({
   teamId,
-  files = [],
   channels = [],
   members = [],
-  onFileUpload,
-  isLoading = false,
-  onUploadFile,
-  onDeleteFile,
-  onDownloadFile,
-  onShareFile,
 }) => {
+  const { user } = useAuth();
+  const [files, setFiles] = useState<File[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("date"); // 'date', 'name', 'type', 'channel'
+  const [sortBy, setSortBy] = useState("date");
   const [filterChannel, setFilterChannel] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [uploading, setUploading] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<globalThis.File | null>(
+    null
+  );
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchFiles = async () => {
+    try {
+      setIsLoadingFiles(true);
+      setError(null);
+      const response = await api.get(`/api/files/all/${teamId}`);
+      const filesData = response.data.map((file: any) => ({
+        id: file.id,
+        teamId: file.teamId,
+        channelId: file.channelId,
+        name: file.fileName,
+        type: file.fileType,
+        size: file.fileSize?.toString() || "0",
+        uploadedBy: file.uploadedById,
+        uploadedAt: file.uploadedAt,
+        url: file.url,
+      }));
+      setFiles(filesData);
+    } catch (error) {
+      console.error("Error fetching files:", error);
+      setError("Failed to load files. Please try again later.");
+    } finally {
+      setIsLoadingFiles(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFiles();
+  }, [teamId]);
+
+  const handleUpload = async (
+    file: globalThis.File,
+    channelId: string,
+    fileName: string
+  ) => {
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("team_id", teamId);
+      formData.append("channel_id", channelId);
+      formData.append("file_name", fileName);
+
+      const response = await api.post("/api/files/upload/explicit", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      const newFile: File = {
+        id: response.data.id.toString(),
+        teamId: teamId,
+        channelId: channelId,
+        name: fileName,
+        type: file.type,
+        size: file.size.toString(),
+        uploadedBy: user?.id || 0,
+        uploadedAt: new Date().toISOString(),
+        url: response.data.url,
+      };
+
+      setFiles((prevFiles) => [...prevFiles, newFile]);
+      setShowUploadModal(false);
+      setSelectedFile(null);
+      alert("File uploaded successfully!");
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      alert("Error uploading file. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteFile = async (fileId: string) => {
+    try {
+      await api.delete(`/api/files/${fileId}`);
+      setFiles((prevFiles) => prevFiles.filter((file) => file.id !== fileId));
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      alert("Error deleting file. Please try again.");
+    }
+  };
 
   // Filtrare după textul căutat
   const filteredFiles = files.filter((file) => {
-    const nameMatch = file.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
+    const nameMatch =
+      file?.name?.toLowerCase()?.includes(searchQuery.toLowerCase()) ?? false;
     const channelMatch =
-      filterChannel === "all" || file.channelId.toString() === filterChannel;
-    const typeMatch = filterType === "all" || file.type === filterType;
+      filterChannel === "all" || file?.channelId?.toString() === filterChannel;
+    const typeMatch = filterType === "all" || file?.type === filterType;
 
     return nameMatch && channelMatch && typeMatch;
   });
@@ -56,23 +130,25 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
   // Sortare fișiere
   const sortedFiles = [...filteredFiles].sort((a, b) => {
     if (sortBy === "name") {
-      return a.name.localeCompare(b.name);
+      return (a?.name || "").localeCompare(b?.name || "");
     } else if (sortBy === "type") {
-      return a.type.localeCompare(b.type);
+      return (a?.type || "").localeCompare(b?.type || "");
     } else if (sortBy === "channel") {
-      const channelA = channels.find((c) => c.id === a.channelId)?.name || "";
-      const channelB = channels.find((c) => c.id === b.channelId)?.name || "";
+      const channelA = channels.find((c) => c.id === a?.channelId)?.name || "";
+      const channelB = channels.find((c) => c.id === b?.channelId)?.name || "";
       return channelA.localeCompare(channelB);
     } else {
       // Data (descendent)
-      return (
-        new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
-      );
+      const dateA = new Date(a?.uploadedAt || 0).getTime();
+      const dateB = new Date(b?.uploadedAt || 0).getTime();
+      return dateB - dateA;
     }
   });
 
   // Extrage tipurile unice de fișiere pentru filtrare
-  const fileTypes = Array.from(new Set(files.map((file) => file.type)));
+  const fileTypes = Array.from(
+    new Set(files.map((file) => file?.type).filter(Boolean))
+  );
 
   // Obține icoana pentru fiecare tip de fișier
   const getFileIcon = (type: any) => {
@@ -209,45 +285,14 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
     });
   };
 
-  // Handle file upload
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (
-      !event.target.files ||
-      event.target.files.length === 0 ||
-      !onFileUpload
-    ) {
-      return;
-    }
-
-    const file = event.target.files[0];
-    const channelId =
-      selectedChannel || (channels.length > 0 ? channels[0].id : null);
-
-    if (!channelId) {
-      alert("Selectați un canal pentru încărcarea fișierului.");
-      return;
-    }
-
-    setUploading(true);
-
-    try {
-      await onFileUpload(file, teamId, channelId);
-      alert("Fișier încărcat cu succes!");
-      // Reset the file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    } catch (error) {
-      console.error("Eroare la încărcarea fișierului:", error);
-      alert("A apărut o eroare la încărcarea fișierului.");
-    } finally {
-      setUploading(false);
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      setShowUploadModal(true);
     }
   };
 
-  // Trigger file input click
   const triggerFileUpload = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
@@ -265,6 +310,7 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
               value={selectedChannel || ""}
               onChange={(e) => setSelectedChannel(e.target.value)}
               className="border rounded-lg text-sm px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isLoadingFiles}
             >
               <option value="">Selectează canal</option>
               {channels.map((channel) => (
@@ -277,8 +323,10 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
 
           <button
             onClick={triggerFileUpload}
-            disabled={uploading}
-            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center text-sm"
+            disabled={uploading || isLoadingFiles}
+            className={`bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center text-sm ${
+              uploading || isLoadingFiles ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
             {uploading ? (
               <span>Se încarcă...</span>
@@ -306,7 +354,7 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
           <input
             type="file"
             ref={fileInputRef}
-            onChange={handleFileUpload}
+            onChange={handleFileSelect}
             className="hidden"
           />
         </div>
@@ -336,6 +384,7 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isLoadingFiles}
             />
           </div>
 
@@ -345,6 +394,7 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
                 value={filterChannel}
                 onChange={(e) => setFilterChannel(e.target.value)}
                 className="border rounded-lg text-sm px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoadingFiles}
               >
                 <option value="all">Toate canalele</option>
                 {channels.map((channel) => (
@@ -360,6 +410,7 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
                 className="border rounded-lg text-sm px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoadingFiles}
               >
                 <option value="all">Toate tipurile</option>
                 {fileTypes.map((type) => (
@@ -375,6 +426,7 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 className="border rounded-lg text-sm px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoadingFiles}
               >
                 <option value="date">Sortează după dată</option>
                 <option value="name">Sortează după nume</option>
@@ -387,7 +439,7 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
       </div>
 
       {/* Files List */}
-      {isLoading ? (
+      {isLoadingFiles ? (
         <div className="text-center py-20">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
             <svg
@@ -413,6 +465,32 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
           </div>
           <p className="text-gray-600 mb-1">Se încarcă fișierele...</p>
           <p className="text-gray-500 text-sm">Vă rugăm să așteptați.</p>
+        </div>
+      ) : error ? (
+        <div className="text-center py-20">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+            <svg
+              className="h-8 w-8 text-red-600"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+          <p className="text-gray-600 mb-1">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Reîncarcă
+          </button>
         </div>
       ) : sortedFiles.length > 0 ? (
         <div className="overflow-x-auto">
@@ -595,6 +673,17 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
           </button>
         </div>
       )}
+
+      <FileUploadModal
+        isOpen={showUploadModal}
+        onClose={() => {
+          setShowUploadModal(false);
+          setSelectedFile(null);
+        }}
+        onUpload={handleUpload}
+        channels={channels || []}
+        selectedFile={selectedFile}
+      />
     </div>
   );
 };
