@@ -1,8 +1,5 @@
 import { UserTeam } from "@/app/types/models_types/userType";
 
-/**
- * Gets a user's full name from firstName and lastName fields
- */
 export const getFullName = (user: any): string => {
   if (!user) return "";
 
@@ -18,9 +15,6 @@ export const getFullName = (user: any): string => {
   return user.name || "Utilizator necunoscut";
 };
 
-/**
- * Gets the avatar URL for a user, falling back to UI Avatars
- */
 export const getAvatarUrl = (user: any): string => {
   if (!user)
     return "https://ui-avatars.com/api/?name=Unknown&background=random";
@@ -41,10 +35,6 @@ export const getAvatarUrl = (user: any): string => {
   )}&background=0D8ABC&color=fff`;
 };
 
-/**
- * Creates a backward compatible user object that works with older code
- * expecting name and avatar properties
- */
 export const createBackwardCompatibleUser = (
   user: UserTeam
 ): UserTeam & { name: string; avatar: string } => {
