@@ -138,16 +138,16 @@ frntnd/
 
 2. **Create a Team**
 
-   - Endpoint: `/teams/create`
+   - Endpoint: `/teams`
    - Description: Create a new team with a name and description.
 
 3. **Join a Channel**
 
-   - Endpoint: `/chat/join`
+   - Endpoint: `/chat`
    - Description: Join a chat channel and start messaging.
 
 4. **Start a Video Call**
-   - Endpoint: `/stream/start`
+   - Endpoint: `/stream`
    - Description: Start a video call with team members.
 
 ## Admin Functionalities
@@ -195,7 +195,3 @@ You can verify the application is running by accessing the root URL:
 ```bash
 http://localhost:3000
 ```
-
-## License
-
-This project is licensed under the ISC License.
