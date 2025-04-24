@@ -21,10 +21,22 @@ import { api as axios } from "@/app/lib/api";
 import EnterTeamModal from "./EnterTeamModal";
 import { getFullName, getAvatarUrl } from "@/app/lib/userUtils";
 
+interface BackendFile {
+  id: string;
+  teamId: string;
+  channelId: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadedById: string;
+  uploadedAt: string;
+  url: string;
+}
+
 interface TeamsOverviewProps {
   teams: Team[];
   users: User[];
-  teamFiles: File[];
+  teamFiles: BackendFile[];
   onSelectTeam: (teamId: string) => void;
   onStartChat: (userId: string) => void;
   onJoinChannel: (teamId: string, channelId: string) => void;

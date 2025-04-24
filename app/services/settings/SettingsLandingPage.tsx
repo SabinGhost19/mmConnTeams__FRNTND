@@ -4,24 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserTeam } from "@/app/types/models_types/userType";
 import { api } from "@/app/lib/api";
-import { getAvatarUrl } from "@/app/lib/userUtils";
-import {
-  ArrowLeft,
-  User,
-  Mail,
-  Building2,
-  Shield,
-  Edit,
-  Camera,
-  Phone,
-  GraduationCap,
-  BookOpen,
-  Users,
-  Calendar,
-  Clock,
-  CheckCircle,
-  FileText,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { UserProfileDTO } from "./types";
 import ProfileHeader from "./components/ProfileHeader";
 import ProfileImage from "./components/ProfileImage";
@@ -42,8 +25,6 @@ const SettingsLandingPage = () => {
   const [profileData, setProfileData] = useState<UserProfileDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [imageError, setImageError] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
@@ -60,15 +41,6 @@ const SettingsLandingPage = () => {
         const response = await api.get("/api/users/current");
         console.log("User data:", response.data);
         setUserData(response.data);
-
-        if (response.data?.profileImage) {
-          try {
-            setImageUrl(response.data.profileImage);
-          } catch (imgErr) {
-            console.error("Error loading profile image:", imgErr);
-            setImageError(true);
-          }
-        }
       } catch (err) {
         setError("Failed to load user data");
         console.error("Error fetching user data:", err);
@@ -90,21 +62,6 @@ const SettingsLandingPage = () => {
 
   const handleProfileUpdate = (updatedProfile: UserProfileDTO) => {
     setProfileData(updatedProfile);
-  };
-
-  const handleImageError = () => {
-    console.error("Failed to load profile image");
-    setImageError(true);
-  };
-
-  // Generate a fallback avatar URL based on the user's name
-  const getFallbackAvatarUrl = () => {
-    if (!userData) return "";
-    const name =
-      `${userData.firstName || ""} ${userData.lastName || ""}`.trim() || "User";
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      name
-    )}&background=0D8ABC&color=fff&size=200`;
   };
 
   // Format date to a readable string
@@ -139,10 +96,6 @@ const SettingsLandingPage = () => {
     );
   }
 
-  // Use the direct image URL if available and no error, otherwise use the fallback
-  const displayImageUrl =
-    imageUrl && !imageError ? imageUrl : getFallbackAvatarUrl();
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <ProfileHeader />
@@ -152,10 +105,13 @@ const SettingsLandingPage = () => {
           {/* Left Column */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-              <ProfileImage
-                imageUrl={displayImageUrl}
-                onImageError={handleImageError}
-              />
+              <div className="flex flex-col items-center">
+                <ProfileImage profileData={profileData} userData={userData} />
+                <h1 className="text-2xl font-bold mt-4">
+                  {userData?.firstName} {userData?.lastName}
+                </h1>
+                <p className="text-gray-600">{userData?.email}</p>
+              </div>
               <UserInfo
                 userData={userData}
                 profileData={profileData}

@@ -185,18 +185,18 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
     }
   };
 
+  ////!!!!!!!!!!!!!!!!!
   const handleEnterTeamById = async (teamId: string) => {
+    console.log("Entering team with ID:", teamId);
     try {
       if (onEnterTeamById) {
         await onEnterTeamById(teamId);
         setShowEnterTeamModal(false);
-
-        // Opțional: reîncarcă echipele sau actualizează starea
-        // fetchTeams();
+      } else {
+        console.error("onEnterTeamById prop is not provided");
       }
     } catch (error) {
-      // Gestionare erori suplimentară dacă este necesar
-      console.error("Eroare la intrarea în echipă:", error);
+      console.error("Error entering team:", error);
     }
   };
   // Fetch notificări la încărcarea componentei

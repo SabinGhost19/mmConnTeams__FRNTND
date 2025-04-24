@@ -153,7 +153,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
       console.log("TeamId: ", teamId);
 
       const response = await axios.put(
-        "/api/teams/enter",
+        `/api/teams/${teamId}/join`,
         { teamId }, // Send as an object, not raw string
         {
           headers: {
@@ -702,6 +702,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
   };
 
   const handleEnterTeam = async (teamId: string) => {
+    console.log("Entering teamiiiiiiiiiiiiiiiiiiiiiii:", teamId);
     try {
       await axios.post(`/api/teams/${teamId}/join`);
       // Refresh teams
@@ -821,6 +822,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
               onStartChat={handleStartChat}
               onJoinChannel={handleJoinChannel}
               onCreateTeam={() => setShowCreateTeamModal(true)}
+              onEnterTeamById={onEnterTeamById}
             />
           </motion.div>
         );
