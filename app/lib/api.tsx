@@ -170,3 +170,16 @@ export const apiPut = <T,>(
 
 export const apiDelete = <T,>(url: string, config?: AxiosRequestConfig) =>
   api.delete<T>(url, config).then((res) => res.data);
+
+// Private Chat API Functions
+export const getPrivateChats = () => apiGet("/api/private-chats");
+export const getPrivateChat = (chatId: string) =>
+  apiGet(`/api/private-chats/${chatId}`);
+export const createPrivateChat = (data: { targetUserId: string }) =>
+  apiPost("/api/private-chats", data);
+export const getPrivateChatMessages = (chatId: string) =>
+  apiGet(`/api/private-chats/${chatId}/messages`);
+export const sendPrivateMessage = (
+  chatId: string,
+  data: { content: string; attachments?: any[] }
+) => apiPost(`/api/private-chats/${chatId}/messages`, data);

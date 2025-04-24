@@ -1,11 +1,19 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import TeamsSidebar from "./components/TeamSidebar";
 import ChatArea from "./components/ChatArea";
 import ChannelHeader from "./components/ChatHeader";
 import { api as axios } from "@/app/lib/api";
-import { Client } from "@stomp/stompjs";
+import { Client, IFrame } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
+import { io, Socket } from "socket.io-client";
+import {
+  getPrivateChats,
+  createPrivateChat,
+  getPrivateChatMessages,
+  sendPrivateMessage,
+} from "../../lib/api";
+import { UserTeam } from "../../types/models_types/userType";
 
 // Define API URL base
 const API_BASE_URL =
@@ -65,12 +73,39 @@ interface Reaction {
 
 interface Message {
   id: string;
-  sender: UserDisplay;
   content: string;
+  sender: {
+    id: string;
+    name: string;
+    avatar?: string;
+    status: string;
+  };
   timestamp: string;
-  attachments: Attachment[];
-  reactions: Reaction[];
+  attachments: any[];
+  reactions: any[];
   isRead: boolean;
+}
+
+interface PrivateChat {
+  id: string;
+  participants: UserDisplay[];
+  unreadCount: number;
+  lastMessage?: Message;
+}
+
+interface PrivateChatResponse {
+  id: string;
+  participants: UserDisplay[];
+}
+
+interface WebSocketMessage {
+  chatId: string;
+  message: Message;
+}
+
+interface WebSocketMessagesResponse {
+  chatId: string;
+  messages: Message[];
 }
 
 const TeamsChat: React.FC = () => {
@@ -79,10 +114,14 @@ const TeamsChat: React.FC = () => {
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserTeam | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [privateChats, setPrivateChats] = useState<PrivateChat[]>([]);
+  const [selectedPrivateChat, setSelectedPrivateChat] =
+    useState<PrivateChat | null>(null);
+  const [showUserList, setShowUserList] = useState(false);
 
   // Stomp client reference
   const stompClientRef = useRef<Client | null>(null);
@@ -97,6 +136,8 @@ const TeamsChat: React.FC = () => {
     >
   >(new Map());
 
+  const [socket, setSocket] = useState<Socket | null>(null);
+
   // Initialize data and socket connection on component mount
   useEffect(() => {
     const initializeApp = async () => {
@@ -108,8 +149,15 @@ const TeamsChat: React.FC = () => {
         setCurrentUser(userResponse.data);
 
         // Fetch all users
-        const usersResponse = await axios.get(`${API_BASE_URL}/users`);
-        setUsers(usersResponse.data);
+        try {
+          const usersResponse = await axios.get(`${API_BASE_URL}/users`);
+          console.log("Users fetched:", usersResponse.data);
+          setUsers(usersResponse.data);
+        } catch (error) {
+          console.error("Error fetching users:", error);
+          // Set empty array if users can't be fetched
+          setUsers([]);
+        }
 
         // Fetch teams data
         const teamsResponse = await axios.get(`${API_BASE_URL}/teams`);
@@ -139,41 +187,73 @@ const TeamsChat: React.FC = () => {
           }
         }
 
-        setLoading(false);
-      } catch (err) {
-        console.error("Error initializing app:", err);
-        setError("Failed to load initial data. Please refresh the page.");
+        // Initialize WebSocket connection
+        const newSocket = io(
+          process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001",
+          {
+            path: "/ws",
+            auth: {
+              token: localStorage.getItem("token"),
+            },
+          }
+        );
+
+        newSocket.on("connect", () => {
+          console.log("Connected to WebSocket server");
+        });
+
+        newSocket.on("new-private-message", (data: WebSocketMessage) =>
+          handleNewPrivateMessage(data)
+        );
+        newSocket.on("private-messages", (data: WebSocketMessagesResponse) => {
+          if (data.chatId === selectedPrivateChat?.id) {
+            setMessages(data.messages);
+          }
+        });
+
+        setSocket(newSocket);
+
+        // Initialize WebSocket connection
+        const socket = new SockJS(SOCKET_URL);
+        const stompClient = new Client({
+          webSocketFactory: () => socket,
+          connectHeaders: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          debug: function (str) {
+            console.log(str);
+          },
+          reconnectDelay: 5000,
+          heartbeatIncoming: 4000,
+          heartbeatOutgoing: 4000,
+        });
+
+        stompClient.onConnect = () => {
+          console.log("Connected to WebSocket");
+
+          // Subscribe to private chat events
+          users.forEach((user) => {
+            if (user.id !== currentUser?.id) {
+              const chatId = [currentUser?.id, user.id].sort().join("-");
+              stompClient.subscribe(`/private/${chatId}`, (message) => {
+                const data = JSON.parse(message.body);
+                handleNewPrivateMessage(data);
+              });
+            }
+          });
+        };
+
+        stompClient.activate();
+        stompClientRef.current = stompClient;
+      } catch (error) {
+        console.error("Error initializing app:", error);
+        setError("Failed to initialize chat application");
+      } finally {
         setLoading(false);
       }
     };
 
     initializeApp();
-
-    // Set up STOMP WebSocket connection
-    const socket = new SockJS(SOCKET_URL);
-    stompClientRef.current = new Client({
-      webSocketFactory: () => socket,
-      debug: function (str: any) {
-        console.log(str);
-      },
-      reconnectDelay: 5000,
-      heartbeatIncoming: 4000,
-      heartbeatOutgoing: 4000,
-    });
-
-    return () => {
-      // Clean up STOMP client connection
-      if (stompClientRef.current && stompClientRef.current.connected) {
-        // Unsubscribe from all topics
-        Array.from(activeSubscriptionsRef.current.values()).forEach(
-          (subscription) => {
-            if (stompClientRef.current) {
-              stompClientRef.current.deactivate();
-            }
-          }
-        );
-      }
-    };
   }, []);
 
   // Connect to STOMP after user data is loaded
@@ -219,11 +299,9 @@ const TeamsChat: React.FC = () => {
       console.log("Disconnected from STOMP WebSocket");
     };
 
-    stompClientRef.current.onStompError = (frame: {
-      headers: { message: any };
-    }) => {
+    stompClientRef.current.onStompError = (frame: IFrame) => {
       console.error("STOMP error", frame);
-      setError(`WebSocket error: ${frame.headers.message}`);
+      setError(`WebSocket error: ${frame.headers.message || "Unknown error"}`);
     };
 
     // Activate connection
@@ -811,6 +889,131 @@ const TeamsChat: React.FC = () => {
     });
   };
 
+  const handleNewPrivateMessage = useCallback(
+    (data: WebSocketMessage) => {
+      setPrivateChats((prevChats) => {
+        const updatedChats = [...prevChats];
+        const chatIndex = updatedChats.findIndex(
+          (chat) => chat.id === data.chatId
+        );
+
+        if (chatIndex !== -1) {
+          // Update existing chat
+          const updatedChat = {
+            ...updatedChats[chatIndex],
+            lastMessage: data.message,
+            unreadCount:
+              selectedPrivateChat?.id === data.chatId
+                ? 0
+                : updatedChats[chatIndex].unreadCount + 1,
+          };
+          updatedChats[chatIndex] = updatedChat;
+        }
+
+        return updatedChats;
+      });
+
+      if (selectedPrivateChat?.id === data.chatId) {
+        setMessages((prev) => [...prev, data.message]);
+      }
+    },
+    [selectedPrivateChat]
+  );
+
+  // Function to fetch users by team ID
+  const fetchUsersByTeam = async (teamId: string) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/teams/${teamId}/users`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching users for team ${teamId}:`, error);
+      return [];
+    }
+  };
+
+  // Function to start a private chat with a user
+  const startPrivateChat = async (userId: string) => {
+    try {
+      const response = (await createPrivateChat({
+        targetUserId: userId,
+      })) as PrivateChatResponse;
+      console.log("Private chat created:", response);
+
+      // Add the new chat to the list
+      const newChat: PrivateChat = {
+        id: response.id,
+        participants: response.participants,
+        unreadCount: 0,
+      };
+
+      setPrivateChats((prevChats) => [...prevChats, newChat]);
+      setSelectedPrivateChat(newChat);
+      setShowUserList(false);
+
+      // Join WebSocket room for the new chat
+      socket?.emit("join-private-chat", { chatId: newChat.id });
+    } catch (error) {
+      console.error("Error creating private chat:", error);
+      setError("Failed to create private chat. Please try again.");
+    }
+  };
+
+  const handleSendPrivateMessage = useCallback(
+    async (content: string, attachments: any[] = []) => {
+      if (!selectedPrivateChat || !currentUser) return;
+
+      try {
+        // Optimistic update
+        const tempMessage: Message = {
+          id: `temp-${Date.now()}`,
+          content,
+          sender: {
+            id: currentUser.id,
+            name: `${currentUser.firstName} ${currentUser.lastName}`,
+            avatar: currentUser.profileImage || undefined,
+            status: currentUser.status || "offline",
+          },
+          timestamp: new Date().toISOString(),
+          attachments,
+          reactions: [],
+          isRead: true,
+        };
+
+        setPrivateChats((prevChats) => {
+          const updatedChats = [...prevChats];
+          const chatIndex = updatedChats.findIndex(
+            (chat) => chat.id === selectedPrivateChat.id
+          );
+
+          if (chatIndex !== -1) {
+            updatedChats[chatIndex] = {
+              ...updatedChats[chatIndex],
+              lastMessage: tempMessage,
+              unreadCount: 0,
+            };
+          }
+
+          return updatedChats;
+        });
+
+        setMessages((prev) => [...prev, tempMessage]);
+
+        // Send message through WebSocket
+        socket?.emit("private-message", {
+          chatId: selectedPrivateChat.id,
+          message: {
+            content,
+            attachments,
+          },
+        });
+      } catch (error) {
+        console.error("Error sending private message:", error);
+        setError("Failed to send message");
+      }
+    },
+    [selectedPrivateChat, currentUser, socket]
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -828,7 +1031,7 @@ const TeamsChat: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-white">
+    <div className="flex h-screen bg-gray-100">
       {/* Mobile hamburger menu */}
       <div className="md:hidden absolute left-4 top-4 z-10">
         <button
@@ -864,43 +1067,89 @@ const TeamsChat: React.FC = () => {
           selectedChannel={selectedChannel}
           onTeamSelect={handleTeamSelect}
           onChannelSelect={handleChannelSelect}
-          onCloseMobileSidebar={() => setIsMobileSidebarOpen(false)}
+          privateChats={privateChats}
+          selectedPrivateChat={selectedPrivateChat}
+          onPrivateChatSelect={setSelectedPrivateChat}
+          onStartPrivateChat={startPrivateChat}
+          isMobileSidebarOpen={isMobileSidebarOpen}
+          onMobileSidebarClose={() => setIsMobileSidebarOpen(false)}
+          users={users.map((user) => ({
+            id: user.id,
+            name: `${user.firstName} ${user.lastName}`,
+            avatar: user.avatarUrl,
+            status: user.status,
+          }))}
+          currentUserId={currentUser?.id || ""}
         />
       </div>
 
       {/* Main Content */}
       <div className="flex flex-col flex-1 overflow-hidden">
-        {selectedChannel && selectedTeam && (
-          <>
-            <ChannelHeader
-              team={selectedTeam}
-              channel={selectedChannel}
-              onlineUsers={
-                users.filter((user) => user.status === "ONLINE").length
-              }
-              totalUsers={users.length}
-            />
+        <ChannelHeader
+          selectedChannel={selectedChannel}
+          selectedPrivateChat={selectedPrivateChat}
+          onMobileMenuClick={() => setIsMobileSidebarOpen(true)}
+        />
 
-            <ChatArea
-              messages={messages}
-              currentUser={currentUser as any}
-              users={users}
-              onSendMessage={handleSendMessage}
-              onReaction={handleReaction}
-              onFileUpload={handleFileUpload}
-              onTyping={sendTypingIndicator}
-              teamName={selectedTeam.name}
-              channelName={selectedChannel.name}
-            />
-          </>
-        )}
-
-        {(!selectedChannel || !selectedTeam) && (
-          <div className="flex items-center justify-center h-full">
-            Please select a channel to start chatting
-          </div>
-        )}
+        <ChatArea
+          messages={messages}
+          onSendMessage={
+            selectedPrivateChat ? handleSendPrivateMessage : handleSendMessage
+          }
+          onReaction={handleReaction}
+          onFileUpload={handleFileUpload}
+          currentUser={currentUser}
+          teamName={selectedTeam?.name || ""}
+          channelName={selectedChannel?.name || ""}
+        />
       </div>
+
+      {showUserList && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">Select User to Chat With</h2>
+            <div className="max-h-96 overflow-y-auto">
+              {users.length > 0 ? (
+                users
+                  .filter((user) => user.id !== currentUser?.id)
+                  .map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center p-3 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => {
+                        startPrivateChat(user.id);
+                      }}
+                    >
+                      <img
+                        src={user.avatarUrl || "/default-avatar.png"}
+                        alt={user.firstName}
+                        className="w-10 h-10 rounded-full mr-3"
+                      />
+                      <div>
+                        <div className="font-medium">
+                          {user.firstName} {user.lastName}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {user.status}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+              ) : (
+                <div className="text-center p-4 text-gray-500">
+                  No users found. Please try again later.
+                </div>
+              )}
+            </div>
+            <button
+              className="mt-4 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+              onClick={() => setShowUserList(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -13,7 +13,12 @@ import { UserTeam } from "@/app/types/models_types/userType";
 
 interface Message {
   id: string;
-  sender: UserTeam;
+  sender: {
+    id: string;
+    name: string;
+    avatar?: string;
+    status: string;
+  };
   content: string;
   timestamp: string;
   attachments: any[];
@@ -23,24 +28,22 @@ interface Message {
 
 interface ChatAreaProps {
   messages: Message[];
-  currentUser: UserTeam;
-  users: UserTeam[];
+  currentUser: UserTeam | null;
   onSendMessage: (content: string, attachments: any[]) => void;
   onReaction: (messageId: string, emoji: string) => void;
   onFileUpload?: (file: File) => void;
-  teamName: string;
-  channelName: string;
+  teamName?: string;
+  channelName?: string;
 }
 
 const ChatArea: React.FC<ChatAreaProps> = ({
   messages = [],
-  currentUser = { id: "", name: "" },
-  users = [],
+  currentUser = null,
   onSendMessage,
   onReaction,
   onFileUpload,
-  teamName,
-  channelName,
+  teamName = "",
+  channelName = "",
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -48,10 +51,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    if (messages?.length > 0 && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages?.length]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const handleFileUpload = (files: FileList | null) => {
     if (!files) return;
