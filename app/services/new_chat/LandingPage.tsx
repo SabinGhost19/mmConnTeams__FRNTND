@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import ChannelMessages from "./components/ChannelMessages";
 import { getAccessToken } from "@/app/lib/auth-utils";
-import { Team, Channel } from "./components/interface";
+import { Team, Channel, User, PrivateChat } from "./components/interface";
 import LoadingBox from "./components/LoadingBox";
 
 // Use a more NextJS friendly approach for styling
@@ -70,6 +70,11 @@ const ChatPage = () => {
   const [showTeamDetails, setShowTeamDetails] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [usersWithCommonTeams, setUsersWithCommonTeams] = useState<User[]>([]);
+  const [selectedPrivateChat, setSelectedPrivateChat] = useState<string | null>(
+    null
+  );
+  const [privateChats, setPrivateChats] = useState<PrivateChat[]>([]);
   const teamHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Refs to avoid dependency cycles and track state across renders
@@ -262,19 +267,110 @@ const ChatPage = () => {
     }
   }, []);
 
-  // Initial load of teams
-  useEffect(() => {
-    console.log("Initial teams load effect running");
-    fetchTeams();
-  }, []); // Empty dependency array - run once on mount
+  // Fetch users with common teams
+  const fetchUsersWithCommonTeams = useCallback(async () => {
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        setError("No authentication token found");
+        return;
+      }
 
-  // Load channels when team changes
+      // Use the new endpoint to get users with common teams
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+        }/api/users/common-team/${selectedTeam}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch users: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Ensure we have valid user data
+      const validUsers = data.filter((user: any) => user && user.id);
+      console.log(`Loaded ${validUsers.length} users with common teams`);
+
+      setUsersWithCommonTeams(validUsers);
+
+      // Create private chat objects from users
+      const privateChatsFromUsers = validUsers.map((user: User) => ({
+        id: `private-${user.id}`, // Create a unique ID for the private chat
+        participants: [currentUserId, user.id],
+        unreadCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+
+      setPrivateChats(privateChatsFromUsers);
+    } catch (err) {
+      console.error("Error fetching users with common teams:", err);
+      setError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }, [selectedTeam, currentUserId]);
+
+  // Start a private chat
+  const startPrivateChat = useCallback(
+    async (userId: string) => {
+      try {
+        // Instead of creating a new private chat on the server,
+        // we'll just select the existing one from our list
+        const existingChat = privateChats.find(
+          (chat) =>
+            chat.participants.includes(userId) &&
+            chat.participants.includes(currentUserId)
+        );
+
+        if (existingChat) {
+          setSelectedPrivateChat(existingChat.id);
+          setSelectedChannel(null);
+        } else {
+          // If for some reason the chat doesn't exist in our list, create a local one
+          const newChatId = `private-${userId}`;
+          const newChat = {
+            id: newChatId,
+            participants: [currentUserId, userId],
+            unreadCount: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+
+          setPrivateChats((prev) => [...prev, newChat]);
+          setSelectedPrivateChat(newChatId);
+          setSelectedChannel(null);
+        }
+      } catch (err) {
+        console.error("Error starting private chat:", err);
+        setError(err instanceof Error ? err.message : "Unknown error");
+      }
+    },
+    [privateChats, currentUserId]
+  );
+
+  // Initial load
+  useEffect(() => {
+    console.log("Initial load effect running");
+    fetchTeams();
+    // We'll fetch users with common teams after a team is selected
+    // fetchUsersWithCommonTeams();
+    // fetchPrivateChats();
+  }, []);
+
+  // Load channels and users with common teams when team changes
   useEffect(() => {
     if (selectedTeam) {
       console.log(`Team selection changed to: ${selectedTeam}`);
       fetchTeamChannels(selectedTeam);
+      fetchUsersWithCommonTeams();
     }
-  }, [selectedTeam, fetchTeamChannels]);
+  }, [selectedTeam, fetchTeamChannels, fetchUsersWithCommonTeams]);
 
   // Handle channel selection with stable reference
   const handleChannelSelect = useCallback(
@@ -515,6 +611,121 @@ const ChatPage = () => {
               </div>
             </div>
 
+            {/* Users with common teams section */}
+            <div className="p-4 border-t border-gray-200">
+              <h3 className="uppercase text-xs font-semibold text-gray-500 tracking-wider mb-4 pl-2">
+                Team Members
+              </h3>
+              <div className="space-y-2">
+                {usersWithCommonTeams.map((user) => (
+                  <div
+                    key={user.id}
+                    className="p-2 rounded-lg cursor-pointer transition-colors hover:bg-[#e3f2fd] text-[#111b21]"
+                    onClick={() => startPrivateChat(user.id)}
+                  >
+                    <div className="flex items-center">
+                      <div className="h-8 w-8 rounded-full bg-[#0d47a1] text-white flex items-center justify-center mr-3 text-sm font-medium">
+                        {(user.firstName || user.email || "U")
+                          .charAt(0)
+                          .toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">
+                          {user.firstName && user.lastName
+                            ? `${user.firstName} ${user.lastName}`
+                            : user.email || "Unknown User"}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {user.commonTeams?.length || 0} common teams
+                        </div>
+                      </div>
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          user.status === "online"
+                            ? "bg-green-500"
+                            : user.status === "away"
+                            ? "bg-yellow-500"
+                            : user.status === "busy"
+                            ? "bg-red-500"
+                            : "bg-gray-400"
+                        }`}
+                      />
+                    </div>
+                  </div>
+                ))}
+                {usersWithCommonTeams.length === 0 && (
+                  <div className="text-xs text-gray-400 p-2">
+                    No team members available
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Private chats section */}
+            <div className="p-4 border-t border-gray-200">
+              <h3 className="uppercase text-xs font-semibold text-gray-500 tracking-wider mb-4 pl-2">
+                Private Chats
+              </h3>
+              <div className="space-y-2">
+                {privateChats.map((chat) => {
+                  const otherParticipant = usersWithCommonTeams.find((user) =>
+                    chat.participants.includes(user.id)
+                  );
+                  if (!otherParticipant) return null;
+
+                  return (
+                    <div
+                      key={chat.id}
+                      className={`p-2 rounded-lg cursor-pointer transition-colors ${
+                        selectedPrivateChat === chat.id
+                          ? "bg-[#bbdefb] text-[#0d47a1]"
+                          : "hover:bg-[#e3f2fd] text-[#111b21]"
+                      }`}
+                      onClick={() => {
+                        setSelectedPrivateChat(chat.id);
+                        setSelectedChannel(null);
+                      }}
+                    >
+                      <div className="flex items-center">
+                        <div className="h-8 w-8 rounded-full bg-[#0d47a1] text-white flex items-center justify-center mr-3 text-sm font-medium">
+                          {(
+                            otherParticipant.firstName ||
+                            otherParticipant.email ||
+                            "U"
+                          )
+                            .charAt(0)
+                            .toUpperCase()}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">
+                            {otherParticipant.firstName &&
+                            otherParticipant.lastName
+                              ? `${otherParticipant.firstName} ${otherParticipant.lastName}`
+                              : otherParticipant.email || "Unknown User"}
+                          </div>
+                          {chat.lastMessage && (
+                            <div className="text-xs text-gray-500 truncate">
+                              {chat.lastMessage.content}
+                            </div>
+                          )}
+                        </div>
+                        {chat.unreadCount > 0 && (
+                          <span className="bg-[#0d47a1] text-white rounded-full text-xs px-1.5 py-0.5">
+                            {chat.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {privateChats.length === 0 && (
+                  <div className="text-xs text-gray-400 p-2">
+                    No private chats yet
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* User profile */}
             <div className="p-3 border-t border-gray-300 bg-[#f0f2f5]">
               <div className="flex items-center">
@@ -680,6 +891,54 @@ const ChatPage = () => {
             >
               <ChannelMessages
                 channelId={selectedChannel}
+                currentUserId={currentUserId}
+                teamId={selectedTeam}
+              />
+            </div>
+          </>
+        ) : selectedPrivateChat ? (
+          <>
+            {/* Private chat header */}
+            <div className="bg-[#f0f2f5] border-b border-gray-200 px-4 py-3 flex items-center shadow-sm">
+              <div className="h-10 w-10 rounded-full bg-[#0d47a1] text-white flex items-center justify-center mr-3 font-semibold">
+                {usersWithCommonTeams
+                  .find((user) =>
+                    privateChats
+                      .find((chat) => chat.id === selectedPrivateChat)
+                      ?.participants.includes(user.id)
+                  )
+                  ?.firstName?.charAt(0)
+                  .toUpperCase() || "U"}
+              </div>
+              <div className="flex-1">
+                <h2 className="font-semibold">
+                  {(() => {
+                    const user = usersWithCommonTeams.find((user) =>
+                      privateChats
+                        .find((chat) => chat.id === selectedPrivateChat)
+                        ?.participants.includes(user.id)
+                    );
+                    if (user?.firstName && user?.lastName) {
+                      return `${user.firstName} ${user.lastName}`;
+                    } else if (user?.email) {
+                      return user.email;
+                    } else {
+                      return "Unknown User";
+                    }
+                  })()}
+                </h2>
+              </div>
+            </div>
+
+            {/* Private chat messages */}
+            <div
+              className="flex-1 relative overflow-hidden"
+              style={{
+                background: `linear-gradient(135deg, #e8f5fd 0%, #bbdefb 50%, #90caf9 100%)`,
+              }}
+            >
+              <ChannelMessages
+                chatId={selectedPrivateChat}
                 currentUserId={currentUserId}
                 teamId={selectedTeam}
               />

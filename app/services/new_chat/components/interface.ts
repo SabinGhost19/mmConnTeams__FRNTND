@@ -59,4 +59,14 @@ export interface User {
   email?: string;
   avatar?: string;
   status: "online" | "offline" | "away" | "busy";
+  commonTeams?: string[]; // Teams that the user shares with the current user
+}
+
+export interface PrivateChat {
+  id: string;
+  participants: string[]; // Array of user IDs
+  lastMessage?: MessageDTO;
+  unreadCount: number;
+  createdAt: string;
+  updatedAt: string;
 }

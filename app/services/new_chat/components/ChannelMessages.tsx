@@ -74,13 +74,15 @@ const TypingIndicator = ({ typingUsers }: TypingIndicatorProps) => {
 };
 
 interface ChannelMessagesProps {
-  channelId: string;
+  channelId?: string;
+  chatId?: string; // For private chats
   currentUserId: string;
   teamId: string;
 }
 
 const ChannelMessages = ({
   channelId,
+  chatId,
   currentUserId,
   teamId,
 }: ChannelMessagesProps) => {
@@ -90,9 +92,9 @@ const ChannelMessages = ({
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const channelIdRef = useRef<string>(channelId);
+  const channelIdRef = useRef<string | undefined>(channelId);
   const [isLoading, setIsLoading] = useState(true);
-  const previousChannelIdRef = useRef<string | null>(null);
+  const previousChannelIdRef = useRef<string | undefined>(channelId);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploads, setUploads] = useState<{ file: File; progress: number }[]>(
@@ -149,6 +151,7 @@ const ChannelMessages = ({
     fetchUsers();
   }, []);
 
+  // Handle channel change
   useEffect(() => {
     if (
       previousChannelIdRef.current &&
@@ -203,18 +206,34 @@ const ChannelMessages = ({
     status,
     error,
     sendMessage: wsSendMessage,
+    sendPrivateMessage: wsSendPrivateMessage,
     sendTyping: wsSendTyping,
     addReaction,
     removeReaction,
     refreshMessages,
     uploadFile,
+    joinPrivateChat,
+    leavePrivateChat,
   } = WebSocketClient({
     channelId,
+    chatId,
     onMessagesReceived: handleMessagesReceived,
     onUserJoined: () => {}, // Empty function to avoid null checks
     onUserLeft: handleUserLeft,
     onTyping: handleTyping,
   });
+
+  // Join private chat when component mounts
+  useEffect(() => {
+    if (chatId) {
+      joinPrivateChat(chatId);
+    }
+    return () => {
+      if (chatId) {
+        leavePrivateChat(chatId);
+      }
+    };
+  }, [chatId, joinPrivateChat, leavePrivateChat]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -232,31 +251,18 @@ const ChannelMessages = ({
   };
 
   const handleSendMessage = () => {
-    if (!input.trim() && !filePreview) return;
+    if (!input.trim()) return;
 
-    // Add the message to the local state immediately
-    const newMessage: MessageDTO = {
-      id: Date.now().toString(), // Temporary ID
-      content: input.trim(),
-      senderId: currentUserId,
-      senderName: "You",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      channelId: channelId,
-      reactions: [],
-      attachments: [],
-      isRead: true,
-    };
+    if (chatId) {
+      // Send private message
+      wsSendPrivateMessage(chatId, input);
+    } else if (channelId) {
+      // Send channel message
+      wsSendMessage(input);
+    }
 
-    setMessages((prev) => [...prev, newMessage]);
     setInput("");
     setIsTyping(false);
-
-    // Send message with attachments
-    wsSendMessage(input.trim() || "Shared a file", []);
-
-    // Clear file preview after sending
-    setFilePreview(null);
   };
 
   // Clean up typing timeout on unmount or channel change

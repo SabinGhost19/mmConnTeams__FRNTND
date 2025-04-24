@@ -7,10 +7,12 @@ import LoadingBox from "./LoadingBox";
 
 interface WebSocketClientProps {
   channelId?: string;
+  chatId?: string; // For private chats
   onMessagesReceived?: (messages: MessageDTO[]) => void;
   onUserJoined?: (data: any) => void;
   onUserLeft?: (data: any) => void;
   onTyping?: (data: any) => void;
+  onPrivateMessage?: (message: MessageDTO) => void;
 }
 
 interface WebSocketClientReturn {
@@ -18,6 +20,11 @@ interface WebSocketClientReturn {
   error: string | null;
   messages: MessageDTO[];
   sendMessage: (content: string, attachments?: any[]) => boolean;
+  sendPrivateMessage: (
+    chatId: string,
+    content: string,
+    attachments?: any[]
+  ) => boolean;
   sendTyping: (isTyping: boolean) => void;
   addReaction: (messageId: string, reactionType: string) => boolean;
   removeReaction: (
@@ -29,15 +36,19 @@ interface WebSocketClientReturn {
   disconnect: () => void;
   refreshMessages: () => void;
   uploadFile: (file: File, teamId: string) => Promise<any>;
+  joinPrivateChat: (chatId: string) => void;
+  leavePrivateChat: (chatId: string) => void;
 }
 
 // WebSocketClient component
 const WebSocketClient = ({
   channelId,
+  chatId,
   onMessagesReceived,
   onUserJoined,
   onUserLeft,
   onTyping,
+  onPrivateMessage,
 }: WebSocketClientProps): WebSocketClientReturn => {
   const [status, setStatus] = useState<
     "disconnected" | "connecting" | "connected" | "error"
@@ -266,6 +277,23 @@ const WebSocketClient = ({
       console.log("Disconnected:", reason);
       setStatus("disconnected");
       hasConnectedRef.current = false;
+    });
+
+    // Private chat events
+    newSocket.on("private-messages", (data) => {
+      console.log(
+        `Received ${data.messages.length} private messages for chat ${data.chatId}`
+      );
+      if (onMessagesReceived) {
+        onMessagesReceived(data.messages);
+      }
+    });
+
+    newSocket.on("new-private-message", (data) => {
+      console.log("New private message received:", data.message);
+      if (onPrivateMessage) {
+        onPrivateMessage(data.message);
+      }
     });
 
     // Store socket in ref
@@ -502,17 +530,58 @@ const WebSocketClient = ({
     return connect();
   }, [connect]);
 
+  const joinPrivateChat = useCallback(
+    (chatId: string) => {
+      if (!isSocketReady()) return;
+
+      console.log(`Joining private chat: ${chatId}`);
+      socketRef.current!.emit("join-private-chat", { chatId });
+    },
+    [isSocketReady]
+  );
+
+  const leavePrivateChat = useCallback(
+    (chatId: string) => {
+      if (!isSocketReady()) return;
+
+      console.log(`Leaving private chat: ${chatId}`);
+      socketRef.current!.emit("leave-private-chat", { chatId });
+    },
+    [isSocketReady]
+  );
+
+  const sendPrivateMessage = useCallback(
+    (chatId: string, content: string, attachments: any[] = []) => {
+      if (!isSocketReady()) return false;
+
+      console.log(`Sending private message to chat ${chatId}: ${content}`);
+      socketRef.current!.emit("private-message", {
+        chatId,
+        message: {
+          content,
+          attachments,
+        },
+      });
+
+      return true;
+    },
+    [isSocketReady]
+  );
+
   return {
     status,
     error,
     messages,
     sendMessage,
+    sendPrivateMessage,
     sendTyping,
     addReaction,
     removeReaction,
     refreshMessages,
     uploadFile,
     reconnect,
+    joinPrivateChat,
+    leavePrivateChat,
     disconnect: () => {
       if (socketRef.current) {
         socketRef.current.removeAllListeners();
