@@ -21,7 +21,7 @@ interface FileUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUpload: (
-    file: File,
+    file: Blob,
     teamId: string,
     channelId: string,
     fileName: string
@@ -71,9 +71,14 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
     setIsUploading(true);
     setError(null);
 
+    //renamed file creation
+    const renamedFile = new File([selectedFile], fileName, {
+      type: selectedFile.type,
+    });
+
     try {
       const response = await onUpload(
-        selectedFile,
+        renamedFile,
         teamId,
         selectedChannel,
         fileName

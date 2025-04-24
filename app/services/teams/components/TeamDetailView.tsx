@@ -359,11 +359,13 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
   ) => {
     if (onFileUpload) {
       try {
-        await onFileUpload(file, teamId, channelId, fileName);
+        const response = await onFileUpload(file, teamId, channelId, fileName);
         // Refresh the files list after upload
         fetchTeamFiles();
+        return response;
       } catch (error) {
         console.error("Error uploading file:", error);
+        throw error;
       }
     }
   };

@@ -279,12 +279,14 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
   ) => {
     if (onFileUpload) {
       try {
-        await onFileUpload(file, teamId, channelId, fileName);
+        const response = await onFileUpload(file, teamId, channelId, fileName);
         setShowUploadModal(false);
         setSelectedFile(null);
+        return response;
       } catch (error) {
         setError("Failed to upload file. Please try again.");
         console.error("Error uploading file:", error);
+        throw error;
       }
     }
   };

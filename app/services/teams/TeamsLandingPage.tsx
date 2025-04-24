@@ -129,11 +129,11 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("teamId", teamId);
-      formData.append("channelId", channelId);
+      formData.append("team_id", teamId);
+      formData.append("channel_id", channelId);
 
       const response = await axios.post<BackendFile>(
-        "/api/files/upload",
+        "/api/files/upload/explicit",
         formData,
         {
           headers: {
