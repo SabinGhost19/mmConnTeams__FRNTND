@@ -3,29 +3,33 @@ import { motion, AnimatePresence } from "framer-motion";
 import Channel from "@/app/types/models_types/channel";
 import { FiUpload } from "react-icons/fi";
 
-interface FileData {
+// Interface for backend file response
+interface BackendFile {
   id: string;
-  name: string;
-  size: string;
-  uploadedAt: string;
-  uploadedBy: string;
+  teamId: string;
   channelId: string;
-  type?: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadedById: string;
+  uploadedAt: string;
+  url: string;
+  awsS3Key?: string;
 }
 
 interface FileUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUpload: (
-    file: Blob,
+    file: File,
     teamId: string,
     channelId: string,
     fileName: string
-  ) => Promise<any>;
+  ) => Promise<BackendFile>;
   channels: Channel[];
-  selectedFile: globalThis.File | null;
+  selectedFile: File | null;
   teamId: string;
-  onFileSelect?: (file: globalThis.File) => void;
+  onFileSelect?: (file: File) => void;
 }
 
 const FileUploadModal: React.FC<FileUploadModalProps> = ({
@@ -37,53 +41,48 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
   teamId,
   onFileSelect,
 }) => {
-  const [selectedChannel, setSelectedChannel] = useState<string>("");
-  const [fileName, setFileName] = useState<string>("");
+  const [fileName, setFileName] = useState("");
+  const [selectedChannel, setSelectedChannel] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (selectedFile) {
-      // Get the file name without extension
-      const originalName = selectedFile.name;
-      const lastDotIndex = originalName.lastIndexOf(".");
-      const nameWithoutExtension =
-        lastDotIndex > 0
-          ? originalName.substring(0, lastDotIndex)
-          : originalName;
-      setFileName(nameWithoutExtension);
+      setFileName(selectedFile.name);
     }
   }, [selectedFile]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && onFileSelect) {
-      onFileSelect(file);
+    if (file) {
+      onFileSelect?.(file);
+      setFileName(file.name);
     }
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !selectedChannel || !fileName) return;
+    if (!selectedFile || !selectedChannel) {
+      setError("Please select a file and channel");
+      return;
+    }
+
+    setIsUploading(true);
+    setError(null);
 
     try {
-      setIsUploading(true);
-      // Get the file extension from the original file
-      const originalName = selectedFile.name;
-      const lastDotIndex = originalName.lastIndexOf(".");
-      const extension =
-        lastDotIndex > 0 ? originalName.substring(lastDotIndex) : "";
-
-      // Create a new file with the updated name
-      const newFileName = fileName + extension;
-      const newFile = new File([selectedFile], newFileName, {
-        type: selectedFile.type,
-        lastModified: selectedFile.lastModified,
-      });
-
-      await onUpload(newFile, teamId, selectedChannel, newFileName);
+      const response = await onUpload(
+        selectedFile,
+        teamId,
+        selectedChannel,
+        fileName
+      );
+      console.log("Upload response:", response);
       onClose();
-    } catch (error) {
-      console.error("Error uploading file:", error);
+    } catch (err) {
+      console.error("Upload error:", err);
+      setError("Failed to upload file. Please try again.");
     } finally {
       setIsUploading(false);
     }

@@ -45,7 +45,7 @@ interface TeamsLandingPageProps {
   initialTeams: Team[];
   initialUsers: UserTeam[];
   initialEvents: Event[];
-  initialFiles: File[];
+  initialFiles: BackendFile[];
 }
 
 interface TeamData {
@@ -75,6 +75,18 @@ interface EditChannelData {
   description: string;
 }
 
+interface BackendFile {
+  id: string;
+  teamId: string;
+  channelId: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadedById: string;
+  uploadedAt: string;
+  url: string;
+}
+
 const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
   initialTeams,
   initialUsers,
@@ -88,7 +100,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
   const [teams, setTeams] = useState<Team[]>(initialTeams);
   const [users, setUsers] = useState<UserTeam[]>(initialUsers);
   const [events, setEvents] = useState<Event[]>(initialEvents);
-  const [files, setFiles] = useState<File[]>(initialFiles);
+  const [files, setFiles] = useState<BackendFile[]>(initialFiles);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [selectedView, setSelectedView] = useState<ViewType>(ViewType.OVERVIEW);
@@ -107,6 +119,8 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
 
+  const [teamFiles, setTeamFiles] = useState<BackendFile[]>([]);
+
   const onFileUpload = async (
     file: Blob,
     teamId: string,
@@ -115,11 +129,11 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("team_id", teamId);
-      formData.append("channel_id", channelId);
+      formData.append("teamId", teamId);
+      formData.append("channelId", channelId);
 
-      const response = await axios.post(
-        "/api/files/upload/explicit",
+      const response = await axios.post<BackendFile>(
+        "/api/files/upload",
         formData,
         {
           headers: {
@@ -128,23 +142,9 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
         }
       );
 
-      console.log("File uploaded successfully:", response.data);
-
-      // Refresh the files list
-      if (response.data) {
-        // Fetch all files for the team after upload
-        const filesResponse = await axios.get<File[]>(
-          `/api/files/all/${teamId}`
-        );
-        if (filesResponse.data) {
-          setFiles(filesResponse.data);
-        }
-      }
-
-      return response.data;
+      setFiles((prev) => [...prev, response.data]);
     } catch (error) {
       console.error("Error uploading file:", error);
-      throw error;
     }
   };
 
@@ -564,37 +564,62 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
     }
   };
 
-  const handleUploadFile = async (file: File) => {
-    if (!selectedTeam) return;
+  const handleUploadFile = async (file: BackendFile) => {
     try {
-      // Remove the duplicate upload logic since it's handled in TeamFiles.tsx
-      // Just update the local state with the new file
-      setFiles((prevFiles) => [...prevFiles, file]);
+      const formData = new FormData();
+      formData.append("file", file as any);
+      formData.append("teamId", selectedTeam?.id || "");
+
+      const response = await axios.post("/api/files/upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setTeamFiles((prev) => [...prev, response.data]);
     } catch (error) {
-      console.error("Error handling file upload:", error);
+      console.error("Error uploading file:", error);
     }
   };
 
   const handleDeleteFile = async (fileId: string) => {
-    if (!selectedTeam) return;
     try {
-      await axios.delete(`/api/teams/${selectedTeam.id}/files/${fileId}`);
-      // Refresh files
-      const response = await axios.get<File[]>(
-        `/api/teams/${selectedTeam.id}/files`
-      );
-      setFiles(response.data);
+      await axios.delete(`/api/files/${fileId}`);
+      setTeamFiles((prev) => prev.filter((file) => file.id !== fileId));
     } catch (error) {
       console.error("Error deleting file:", error);
     }
   };
 
-  const handleShareFile = async (fileId: string, userIds: string[]) => {
-    if (!selectedTeam) return;
+  const handleDownloadFile = async (fileId: string) => {
     try {
-      await axios.post(`/api/teams/${selectedTeam.id}/files/${fileId}/share`, {
-        userIds,
+      const response = await axios.get(`/api/files/download/${fileId}`, {
+        responseType: "blob",
       });
+
+      const file = teamFiles.find((f) => f.id === fileId);
+      if (!file) return;
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", file.fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+    }
+  };
+
+  const handleShareFile = async (fileId: string) => {
+    try {
+      const file = teamFiles.find((f) => f.id === fileId);
+      if (!file) return;
+
+      // Implement file sharing logic here
+      console.log("Sharing file:", file);
     } catch (error) {
       console.error("Error sharing file:", error);
     }
@@ -761,6 +786,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
               onLeaveTeam={handleLeaveTeam}
               onUpdateTeam={handleUpdateTeam}
               onDeleteTeam={handleDeleteTeam}
+              onDownloadFile={handleDownloadFile}
             />
           </motion.div>
         ) : null;

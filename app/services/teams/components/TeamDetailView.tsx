@@ -95,7 +95,7 @@ interface TeamDetailViewProps {
   onLeaveTeam: (teamId: string) => void;
   onUpdateTeam: (updates: Partial<Team>) => void;
   onDeleteTeam: (teamId: string) => void;
-  onDownloadFile?: (fileId: string) => void;
+  onDownloadFile: (fileId: string) => void;
 }
 
 const TeamDetailView: React.FC<TeamDetailViewProps> = ({
@@ -365,6 +365,36 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
       } catch (error) {
         console.error("Error uploading file:", error);
       }
+    }
+  };
+
+  const handleDownloadFile = async (
+    fileId: string,
+    awsS3Key?: string,
+    fileName?: string
+  ) => {
+    try {
+      const response = await axios.get(`/api/files/download/${awsS3Key}`, {
+        params: {
+          awsS3Key,
+          fileName,
+        },
+        responseType: "blob",
+      });
+
+      const file = teamFiles.find((f) => f.id === fileId);
+      if (!file) return;
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", file.fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading file:", error);
     }
   };
 
@@ -687,17 +717,19 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                               <div className="flex space-x-2">
                                 <button
                                   className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600"
-                                  onClick={() => {
-                                    // Download logic
-                                  }}
+                                  onClick={() =>
+                                    handleDownloadFile(
+                                      file.id,
+                                      file.awsS3Key,
+                                      file.fileName
+                                    )
+                                  }
                                 >
                                   <FiDownload className="h-4 w-4" />
                                 </button>
                                 <button
                                   className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600"
-                                  onClick={() => {
-                                    // Share logic
-                                  }}
+                                  onClick={() => onShareFile(file.id, [])}
                                 >
                                   <FiShare2 className="h-4 w-4" />
                                 </button>
@@ -741,11 +773,7 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                         }
                       }}
                       onDeleteFile={onDeleteFile}
-                      onDownloadFile={(fileId: string) => {
-                        if (onDownloadFile) {
-                          onDownloadFile(fileId);
-                        }
-                      }}
+                      onDownloadFile={handleDownloadFile}
                       onShareFile={onShareFile}
                     />
                   </div>

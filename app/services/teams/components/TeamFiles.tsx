@@ -66,7 +66,11 @@ interface TeamFilesProps {
     fileName: string
   ) => void;
   onDeleteFile?: (fileId: string) => void;
-  onDownloadFile?: (fileId: string) => void;
+  onDownloadFile?: (
+    fileId: string,
+    awsS3Key?: string,
+    fileName?: string
+  ) => void;
   onShareFile?: (fileId: string, userIds: string[]) => void;
 }
 
@@ -285,6 +289,15 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
     }
   };
 
+  const handleDownload = (fileId: string) => {
+    const file = files.find((f) => f.id === fileId);
+    if (file && file.awsS3Key) {
+      onDownloadFile?.(fileId, file.awsS3Key, file.fileName);
+    } else {
+      console.error("File or awsS3Key not found");
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Search and Filter Bar */}
@@ -403,8 +416,9 @@ const TeamFiles: React.FC<TeamFilesProps> = ({
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end space-x-2">
                       <button
-                        onClick={() => onDownloadFile?.(file.id)}
-                        className="text-blue-600 hover:text-blue-900"
+                        onClick={() => handleDownload(file.id)}
+                        className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                        title="Download"
                       >
                         <FiDownload className="h-4 w-4" />
                       </button>
