@@ -40,24 +40,24 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
   color,
 }) => (
   <div
-    className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2"
+    className="bg-white rounded-xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2"
     style={{ borderColor: color }}
   >
-    <div className="flex items-center mb-4">
+    <div className="flex items-center mb-3 sm:mb-4">
       <div
-        className="p-3 rounded-full mr-4"
+        className="p-2 sm:p-3 rounded-full mr-3 sm:mr-4"
         style={{
           backgroundColor: `${color}15`,
           color: color,
         }}
       >
-        <Icon className="w-8 h-8" />
+        <Icon className="w-6 h-6 sm:w-8 sm:h-8" />
       </div>
-      <h3 className="text-xl font-semibold" style={{ color: color }}>
+      <h3 className="text-lg sm:text-xl font-semibold" style={{ color: color }}>
         {title}
       </h3>
     </div>
-    <p className="text-gray-600">{description}</p>
+    <p className="text-sm sm:text-base text-gray-600">{description}</p>
   </div>
 );
 
@@ -72,13 +72,15 @@ const IntegrationCard: React.FC<IntegrationCardProps> = ({
   title,
   description,
 }) => (
-  <div className="bg-white rounded-xl p-6 shadow-lg flex items-center space-x-6">
-    <div className="bg-blue-50 p-4 rounded-full">
-      <Icon className="w-10 h-10 text-blue-600" />
+  <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
+    <div className="bg-blue-50 p-3 sm:p-4 rounded-full">
+      <Icon className="w-8 h-8 sm:w-10 sm:h-10 text-blue-600" />
     </div>
-    <div>
-      <h4 className="text-xl font-semibold text-blue-800 mb-2">{title}</h4>
-      <p className="text-gray-600">{description}</p>
+    <div className="text-center sm:text-left">
+      <h4 className="text-lg sm:text-xl font-semibold text-blue-800 mb-2">
+        {title}
+      </h4>
+      <p className="text-sm sm:text-base text-gray-600">{description}</p>
     </div>
   </div>
 );
@@ -175,72 +177,74 @@ const ProductLandingPage: React.FC = () => {
   ];
 
   return (
-    <div className="ml-20 min-h-screen bg-white">
+    <div className="min-h-screen bg-white">
       {/* Navbar */}
-      <nav className="fixed top-0 left-20 right-0 bg-white shadow-sm z-50">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center">
-            <a
-              href="/"
-              className="text-2xl font-bold text-blue-800 flex items-center"
-            >
-              <span className="mr-2">🚀</span> TeamSync
-            </a>
-          </div>
-          <div className="flex items-center space-x-6">
-            <a
-              href="#features"
-              className="text-gray-700 hover:text-blue-600 transition-colors"
-            >
-              Features
-            </a>
-            <a
-              href="#team-collaboration"
-              className="text-gray-700 hover:text-blue-600 transition-colors"
-            >
-              Collaboration
-            </a>
-            <a
-              href="#testimonials"
-              className="text-gray-700 hover:text-blue-600 transition-colors"
-            >
-              Testimonials
-            </a>
-            <a
-              href="/learnmore"
-              className="px-8 py-3 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition-all flex items-center font-semibold"
-            >
-              <span className="mr-2">Learn More</span>{" "}
-              <Globe className="w-5 h-5" />
-            </a>
-            <a
-              href="#"
-              className="px-6 py-2 bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition-all"
-            >
-              Log Out
-            </a>
+      <nav className="fixed top-0 left-0 right-0 bg-white shadow-sm z-50">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+            <div className="flex items-center">
+              <a
+                href="/"
+                className="text-xl sm:text-2xl font-bold text-blue-800 flex items-center"
+              >
+                <span className="mr-2">🚀</span> TeamSync
+              </a>
+            </div>
+            <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6">
+              <a
+                href="#features"
+                className="text-sm sm:text-base text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                Features
+              </a>
+              <a
+                href="#team-collaboration"
+                className="text-sm sm:text-base text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                Collaboration
+              </a>
+              <a
+                href="#testimonials"
+                className="text-sm sm:text-base text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                Testimonials
+              </a>
+              <a
+                href="/learnmore"
+                className="px-4 sm:px-8 py-2 sm:py-3 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition-all flex items-center font-semibold text-sm sm:text-base"
+              >
+                <span className="mr-2">Learn More</span>{" "}
+                <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
+              </a>
+              <a
+                href="#"
+                className="px-4 sm:px-6 py-2 bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition-all text-sm sm:text-base"
+              >
+                Log Out
+              </a>
+            </div>
           </div>
         </div>
       </nav>
 
       {/* Hero Carousel */}
-      <div className="pt-20">
+      <div className="pt-16 sm:pt-20">
         <HeroCarousel />
       </div>
 
       {/* Features Section */}
-      <section id="features" className="container mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-gray-800 mb-4">
+      <section id="features" className="container mx-auto px-4 py-8 sm:py-16">
+        <div className="text-center mb-8 sm:mb-12">
+          <h2 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-3 sm:mb-4">
             Powerful Features for Modern Teams
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-base sm:text-xl text-gray-600 max-w-2xl mx-auto">
             TeamSync provides a comprehensive suite of tools to enhance team
             productivity and communication.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
           {features.map((feature, index) => (
             <FeatureCard
               key={index}
@@ -253,144 +257,87 @@ const ProductLandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Integrations Section */}
-      <section className="bg-gray-50 py-16">
+      {/* Team Collaboration Section */}
+      <section id="team-collaboration" className="bg-gray-50 py-8 sm:py-16">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-800 mb-4">
-              Powerful Integrations
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-3 sm:mb-4">
+              Enhanced Team Collaboration
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Connect, automate, and streamline your workflow with TeamSync.
+            <p className="text-base sm:text-xl text-gray-600 max-w-2xl mx-auto">
+              Work together seamlessly with our advanced collaboration tools.
             </p>
           </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {integrations.map((integration, index) => (
-              <IntegrationCard
-                key={index}
-                icon={integration.icon}
-                title={integration.title}
-                description={integration.description}
-              />
-            ))}
-          </div>
+          <TeamCollaboration />
         </div>
       </section>
 
-      {/* Team Collaboration Section (Replaces Pricing Section) */}
-      <TeamCollaboration />
+      {/* Integrations Section */}
+      <section className="container mx-auto px-4 py-8 sm:py-16">
+        <div className="text-center mb-8 sm:mb-12">
+          <h2 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-3 sm:mb-4">
+            Seamless Integrations
+          </h2>
+          <p className="text-base sm:text-xl text-gray-600 max-w-2xl mx-auto">
+            Connect with your favorite tools and services.
+          </p>
+        </div>
 
-      {/* Security and Compliance */}
-      <section className="container mx-auto px-4 py-16">
-        <div className="flex flex-col lg:flex-row items-center">
-          <div className="w-full lg:w-1/2 pr-0 lg:pr-12 mb-8 lg:mb-0">
-            <h2 className="text-4xl font-bold text-gray-800 mb-6">
-              Enterprise-Grade Security
-            </h2>
-            <div className="space-y-6">
-              <div className="flex items-center">
-                <Shield className="w-10 h-10 text-blue-600 mr-4" />
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-800">
-                    Advanced Protection
-                  </h3>
-                  <p className="text-gray-600">
-                    Military-grade encryption and multi-factor authentication to
-                    keep your team's conversations private.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <Lock className="w-10 h-10 text-green-600 mr-4" />
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-800">
-                    Data Control
-                  </h3>
-                  <p className="text-gray-600">
-                    Control who can access what with granular permissions and
-                    data governance policies.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="w-full lg:w-1/2">
-            <div className="bg-white rounded-xl shadow-2xl p-8">
-              <PieChart className="w-64 h-64 mx-auto text-blue-500" />
-            </div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
+          {integrations.map((integration, index) => (
+            <IntegrationCard
+              key={index}
+              icon={integration.icon}
+              title={integration.title}
+              description={integration.description}
+            />
+          ))}
         </div>
       </section>
 
       {/* Testimonials Section */}
-      <section id="testimonials" className="bg-gray-50 py-16">
+      <section id="testimonials" className="bg-gray-50 py-8 sm:py-16">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-800 mb-4">
-              Loved by Teams Everywhere
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-3 sm:mb-4">
+              What Our Users Say
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              See what teams are saying about their experience with TeamSync.
+            <p className="text-base sm:text-xl text-gray-600 max-w-2xl mx-auto">
+              Hear from teams who have transformed their collaboration with
+              TeamSync.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
             {testimonials.map((testimonial, index) => (
-              <div key={index} className="bg-white rounded-xl shadow-lg p-8">
-                <div className="flex items-center mb-4">
+              <div
+                key={index}
+                className="bg-white rounded-xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all"
+              >
+                <div className="flex items-center mb-3 sm:mb-4">
                   <img
                     src={testimonial.avatar}
                     alt={testimonial.name}
-                    className="w-16 h-16 rounded-full mr-4 object-cover"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full mr-3 sm:mr-4 object-cover"
                   />
                   <div>
-                    <h4 className="text-lg font-semibold text-gray-800">
+                    <h4 className="text-sm sm:text-base font-semibold text-gray-800">
                       {testimonial.name}
                     </h4>
-                    <p className="text-gray-600">{testimonial.position}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      {testimonial.position}
+                    </p>
                   </div>
                 </div>
-                <p className="text-gray-700 italic">"{testimonial.quote}"</p>
+                <p className="text-sm sm:text-base text-gray-600 italic">
+                  "{testimonial.quote}"
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Call to Action */}
-      <section className="bg-blue-600 text-white py-16">
-        <div className="container mx-auto px-4 text-center">
-          <div className="flex justify-center mb-8">
-            <div className="flex space-x-4">
-              <div className="bg-white bg-opacity-20 p-4 rounded-full">
-                <Coffee className="w-8 h-8" />
-              </div>
-              <div className="bg-white bg-opacity-20 p-4 rounded-full">
-                <Users className="w-8 h-8" />
-              </div>
-              <div className="bg-white bg-opacity-20 p-4 rounded-full">
-                <Heart className="w-8 h-8" />
-              </div>
-            </div>
-          </div>
-          <h2 className="text-4xl font-bold mb-6">
-            Ready to Transform Your Team?
-          </h2>
-          <p className="text-xl mb-8 max-w-2xl mx-auto">
-            Join thousands of teams who've already discovered a better way to
-            work together. Start your free trial today.
-          </p>
-          <div>
-            <a
-              href="/login"
-              className="px-8 py-3 bg-white text-blue-600 rounded-lg shadow-md hover:bg-gray-100 transition-colors font-semibold"
-            >
-              Start Free Trial
-            </a>
-          </div>
-        </div>
-      </section>
       <Footer />
     </div>
   );

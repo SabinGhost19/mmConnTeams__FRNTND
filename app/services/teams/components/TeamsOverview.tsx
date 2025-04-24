@@ -108,26 +108,28 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
   return (
     <div className="flex flex-col h-full overflow-auto bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-          <h1 className="text-2xl font-bold text-gray-800">Teams Overview</h1>
-          <div className="flex flex-wrap gap-3">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
+            Teams Overview
+          </h1>
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowEnterTeamModal(true)}
-              className="flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition-colors duration-200"
+              className="flex items-center px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition-colors duration-200 text-sm sm:text-base"
             >
-              <FiKey className="h-5 w-5 mr-2" />
+              <FiKey className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5 sm:mr-2" />
               Join Team by ID
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={onCreateTeam}
-              className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200"
+              className="flex items-center px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 text-sm sm:text-base"
             >
-              <FiPlus className="h-5 w-5 mr-2" />
+              <FiPlus className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5 sm:mr-2" />
               Create New Team
             </motion.button>
           </div>
@@ -135,21 +137,23 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
       </div>
 
       {/* Stats Cards */}
-      <div className="p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="p-4 sm:p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+            className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100"
           >
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-                <FiUsers className="h-6 w-6" />
+              <div className="p-2 sm:p-3 rounded-full bg-blue-100 text-blue-600">
+                <FiUsers className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Teams</p>
-                <p className="text-2xl font-semibold text-gray-900">
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-500">
+                  Total Teams
+                </p>
+                <p className="text-xl sm:text-2xl font-semibold text-gray-900">
                   {stats.totalTeams}
                 </p>
               </div>
@@ -160,17 +164,17 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
-            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+            className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100"
           >
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-100 text-green-600">
-                <FiMessageSquare className="h-6 w-6" />
+              <div className="p-2 sm:p-3 rounded-full bg-green-100 text-green-600">
+                <FiMessageSquare className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-500">
                   Total Channels
                 </p>
-                <p className="text-2xl font-semibold text-gray-900">
+                <p className="text-xl sm:text-2xl font-semibold text-gray-900">
                   {stats.totalChannels}
                 </p>
               </div>
@@ -181,15 +185,17 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.2 }}
-            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+            className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100"
           >
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-purple-100 text-purple-600">
-                <FiCalendar className="h-6 w-6" />
+              <div className="p-2 sm:p-3 rounded-full bg-purple-100 text-purple-600">
+                <FiCalendar className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Events</p>
-                <p className="text-2xl font-semibold text-gray-900">
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-500">
+                  Events
+                </p>
+                <p className="text-xl sm:text-2xl font-semibold text-gray-900">
                   {stats.totalEvents || 0}
                 </p>
               </div>
@@ -200,15 +206,17 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.3 }}
-            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+            className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100"
           >
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
-                <FiFile className="h-6 w-6" />
+              <div className="p-2 sm:p-3 rounded-full bg-yellow-100 text-yellow-600">
+                <FiFile className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Files</p>
-                <p className="text-2xl font-semibold text-gray-900">
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-500">
+                  Total Files
+                </p>
+                <p className="text-xl sm:text-2xl font-semibold text-gray-900">
                   {stats.totalFiles}
                 </p>
               </div>
@@ -216,11 +224,13 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
           </motion.div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
           {/* Teams Grid */}
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-800 mb-6">Your Teams</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-4 sm:mb-6">
+              Your Teams
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               {teams.map((team, index) => (
                 <motion.div
                   key={team.id}
@@ -237,25 +247,27 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
                         : "bg-gray-200"
                     }`}
                   />
-                  <div className="p-6">
-                    <div className="flex items-center mb-4">
-                      <span className="text-3xl mr-3">{team.icon}</span>
+                  <div className="p-4 sm:p-6">
+                    <div className="flex items-center mb-3 sm:mb-4">
+                      <span className="text-2xl sm:text-3xl mr-2 sm:mr-3">
+                        {team.icon}
+                      </span>
                       <div className="flex-1">
-                        <h3 className="font-bold text-lg text-gray-900">
+                        <h3 className="font-bold text-base sm:text-lg text-gray-900">
                           {team.name}
                         </h3>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-xs sm:text-sm text-gray-500">
                           {team.channels ? team.channels.length : 0} channels
                         </p>
                       </div>
                       {team.unreadCount && team.unreadCount > 0 && (
-                        <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                        <span className="bg-blue-600 text-white text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full">
                           {team.unreadCount}
                         </span>
                       )}
                     </div>
 
-                    <p className="text-gray-600 text-sm mb-6 line-clamp-2">
+                    <p className="text-gray-600 text-xs sm:text-sm mb-4 sm:mb-6 line-clamp-2">
                       {team.description}
                     </p>
 
@@ -270,19 +282,19 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
                                 key={user.id}
                                 src={getAvatarUrl(user)}
                                 alt={getFullName(user)}
-                                className="w-8 h-8 rounded-full border-2 border-white"
+                                className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-white"
                               />
                             ) : null;
                           })
                         ) : (
-                          <span className="text-sm text-gray-500">
+                          <span className="text-xs sm:text-sm text-gray-500">
                             No members
                           </span>
                         )}
 
                         {Array.isArray(team.members) &&
                           team.members.length > 3 && (
-                            <div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center">
+                            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center">
                               <span className="text-xs font-medium text-gray-600">
                                 +{team.members.length - 3}
                               </span>
@@ -294,10 +306,10 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => onSelectTeam(team.id)}
-                        className="flex items-center text-blue-600 hover:text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors duration-200"
+                        className="flex items-center text-blue-600 hover:text-blue-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-blue-50 transition-colors duration-200 text-xs sm:text-sm"
                       >
                         View Details
-                        <FiArrowRight className="ml-2 h-4 w-4" />
+                        <FiArrowRight className="ml-1.5 sm:ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </motion.button>
                     </div>
                   </div>
@@ -307,7 +319,7 @@ const TeamsOverview: React.FC<TeamsOverviewProps> = ({
           </div>
 
           {/* Sidebar */}
-          <div className="lg:w-80 space-y-6">
+          <div className="lg:w-80 space-y-4 sm:space-y-6">
             <UpcomingEvents teams={teams} users={users} />
             <ActiveUsers users={onlineUsers} onStartChat={handleStartChat} />
           </div>

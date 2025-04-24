@@ -8,16 +8,24 @@ import ProductLandingPage from "../services/presentation/ProductLandingPage";
 const Sidebar: React.FC = () => {
   const sidebarProps = useSidebar();
 
-  return sidebarProps.isMobile ? (
-    <>
-      <MobileSidebar {...sidebarProps} />
-      <ProductLandingPage />
-    </>
-  ) : (
-    <>
-      <DesktopSidebar {...sidebarProps} />
-      <ProductLandingPage />
-    </>
+  return (
+    <div className="flex flex-col sm:flex-row min-h-screen">
+      {sidebarProps.isMobile ? (
+        <>
+          <MobileSidebar {...sidebarProps} />
+          <main className="flex-1 w-full sm:ml-20">
+            <ProductLandingPage />
+          </main>
+        </>
+      ) : (
+        <>
+          <DesktopSidebar {...sidebarProps} />
+          <main className="flex-1 w-full sm:ml-20">
+            <ProductLandingPage />
+          </main>
+        </>
+      )}
+    </div>
   );
 };
 
