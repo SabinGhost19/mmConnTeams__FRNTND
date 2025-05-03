@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import "./sidebar-fixes.css";
 import ReactQueryProvider from "./providers/providerQuery";
 import { AuthProvider } from "./contexts/auth-context";
 

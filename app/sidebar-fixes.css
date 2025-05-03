@@ -1,0 +1,23 @@
+.has-mobile-sidebar button[aria-label="Toggle menu"] {
+  z-index: 9999 !important;
+}
+
+@media (max-width: 768px) {
+  [class*="z-[1"],
+  [class*="z-[2"],
+  [class*="z-[3"],
+  [class*="z-[4"],
+  [class*="z-[5"],
+  [class*="z-[6"],
+  [class*="z-[7"],
+  [class*="z-[8"],
+  [class*="z-[9"] {
+    z-index: auto !important;
+  }
+
+  .fixed.top-0.left-0.z-\[100\],
+  .fixed.z-\[150\],
+  .fixed.z-\[140\] {
+    z-index: 9999 !important;
+  }
+}

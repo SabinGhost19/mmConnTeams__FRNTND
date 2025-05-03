@@ -179,10 +179,10 @@ const ProductLandingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 bg-white shadow-sm z-50">
+      <nav className="fixed top-0 left-0 right-0 bg-white shadow-sm z-40">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
-            <div className="flex items-center">
+            <div className="flex items-center pl-12 sm:pl-0">
               <a
                 href="/"
                 className="text-xl sm:text-2xl font-bold text-blue-800 flex items-center"

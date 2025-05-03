@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import {
   Bars3Icon,
@@ -8,7 +9,12 @@ import { SidebarProps } from "../hooks/useSideBar";
 
 type MobileSidebarProps = Pick<
   SidebarProps,
-  "menuItems" | "activeTab" | "setActiveTab" | "sidebarOpen" | "setSidebarOpen"
+  | "menuItems"
+  | "activeTab"
+  | "setActiveTab"
+  | "sidebarOpen"
+  | "setSidebarOpen"
+  | "navigateTo"
 >;
 
 export const MobileSidebar: React.FC<MobileSidebarProps> = ({
@@ -17,13 +23,26 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
   setActiveTab,
   sidebarOpen,
   setSidebarOpen,
+  navigateTo,
 }) => {
+  // Handle click on menu item
+  const handleMenuItemClick = (key: string, route: string) => {
+    setActiveTab(key);
+    navigateTo(route);
+    setSidebarOpen(false);
+  };
+
   return (
     <>
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="fixed z-50 top-4 left-4 p-2 bg-gray-900 rounded-md text-white"
+        className="fixed z-[150] top-4 left-4 p-2 bg-gray-900 rounded-md text-white shadow-xl flex items-center justify-center"
         aria-label="Toggle menu"
+        style={{
+          width: "40px",
+          height: "40px",
+          boxShadow: "0 0 10px rgba(0,0,0,0.3)",
+        }}
       >
         {sidebarOpen ? (
           <XMarkIcon className="w-6 h-6" />
@@ -35,7 +54,7 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
       <div
         className={`
           transition-all duration-300 ease-in-out
-          fixed z-40 top-0 left-0 h-screen w-64 bg-gray-900 shadow-xl
+          fixed z-[140] top-0 left-0 h-screen w-64 bg-gray-900 shadow-xl
           flex flex-col items-center py-6
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
         `}
@@ -50,10 +69,7 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
           {menuItems.map((item) => (
             <button
               key={item.key}
-              onClick={() => {
-                setActiveTab(item.key);
-                setSidebarOpen(false);
-              }}
+              onClick={() => handleMenuItemClick(item.key, item.route)}
               className={`
                 w-full flex items-center py-3 px-3 mb-2 rounded-lg
                 transition-all duration-200 
@@ -81,7 +97,7 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
 
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30"
+          className="fixed inset-0 bg-black bg-opacity-50 z-[130]"
           onClick={() => setSidebarOpen(false)}
         />
       )}

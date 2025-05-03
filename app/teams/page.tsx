@@ -13,11 +13,15 @@ import Event from "@/app/types/models_types/event";
 import File from "@/app/types/models_types/file";
 import Channel from "@/app/types/models_types/channel";
 import { UserTeam } from "../types/models_types/userType";
+import ProtectedRoute from "../components/ProtectedRoutes";
+import RoleExclusionGuard from "../components/RoleExclusionGuard";
+import { ROLE } from "../types/models_types/roles";
 
 const TeamsPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialTeams, setTeams] = useState<Team[]>([]);
+
   useEffect(() => {
     const getTeams = async () => {
       try {
@@ -68,13 +72,22 @@ const TeamsPage = () => {
 
     getTeams();
   }, []);
+
   return (
-    <TeamsLandingPage
-      initialTeams={initialTeams}
-      initialUsers={mockUsers}
-      initialEvents={mockEvents}
-      initialFiles={mockFiles}
-    />
+    <ProtectedRoute>
+      <RoleExclusionGuard
+        excludedRoles={[ROLE.ADMIN]}
+        redirectTo="/admin"
+        allowIfHasRole={[ROLE.STUDENT]}
+      >
+        <TeamsLandingPage
+          initialTeams={initialTeams}
+          initialUsers={mockUsers}
+          initialEvents={mockEvents}
+          initialFiles={mockFiles}
+        />
+      </RoleExclusionGuard>
+    </ProtectedRoute>
   );
 };
 

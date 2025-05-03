@@ -1,17 +1,25 @@
+"use client";
 import React from "react";
 import { SidebarProps } from "../hooks/useSideBar";
 import { Squares2X2Icon } from "@heroicons/react/24/outline";
 
 type DesktopSidebarProps = Pick<
   SidebarProps,
-  "menuItems" | "activeTab" | "setActiveTab"
+  "menuItems" | "activeTab" | "setActiveTab" | "navigateTo"
 >;
 
 export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   menuItems,
   activeTab,
   setActiveTab,
+  navigateTo,
 }) => {
+  // Handle click on menu item
+  const handleMenuItemClick = (key: string, route: string) => {
+    setActiveTab(key);
+    navigateTo(route);
+  };
+
   return (
     <div className="fixed left-0 top-0 h-screen w-20 bg-gray-900 flex flex-col items-center py-6 shadow-xl">
       <div className="mb-8">
@@ -24,7 +32,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         {menuItems.map((item) => (
           <button
             key={item.key}
-            onClick={() => setActiveTab(item.key)}
+            onClick={() => handleMenuItemClick(item.key, item.route)}
             className={`
               w-full flex flex-col items-center justify-center
               py-3 transition-all duration-300

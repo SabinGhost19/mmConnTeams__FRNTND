@@ -306,9 +306,18 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
 
   const totalChannels = team.channels?.length || 0;
   const totalFiles = teamFiles.length;
-  const upcomingEvents = events.filter(
-    (event) => new Date(event.date) > new Date()
-  ).length;
+  const upcomingEvents = (events || []).filter((event) => {
+    // Check if event is defined
+    if (!event) return false;
+    // Safely handle the date property regardless of event format
+    if (!event.date) return false;
+    try {
+      return new Date(event.date) > new Date();
+    } catch (e) {
+      console.error("Invalid date format in event:", event);
+      return false;
+    }
+  }).length;
 
   // Sortează canalele după numărul de mesaje necitite
   const sortedChannels = [...(team.channels || [])].sort(
