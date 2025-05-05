@@ -415,8 +415,29 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
       <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4 shadow-sm rounded-b-xl">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
           <div className="flex items-center space-x-3 sm:space-x-4">
-            <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md">
-              <span className="text-lg sm:text-xl">{team.iconUrl}</span>
+            <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md">
+              {team.iconUrl ? (
+                <img
+                  src={team.iconUrl}
+                  alt={`${team.name} icon`}
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    // If image fails to load, fallback to text icon
+                    e.currentTarget.style.display = "none";
+                    const parent = e.currentTarget.parentElement;
+                    if (parent) {
+                      const iconSpan = document.createElement("span");
+                      iconSpan.className = "text-lg sm:text-xl";
+                      iconSpan.textContent = team.icon || team.name.charAt(0);
+                      parent.appendChild(iconSpan);
+                    }
+                  }}
+                />
+              ) : (
+                <span className="text-lg sm:text-xl">
+                  {team.icon || team.name.charAt(0)}
+                </span>
+              )}
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-800">

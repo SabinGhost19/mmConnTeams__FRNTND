@@ -136,8 +136,29 @@ const TeamsSidebar: React.FC<TeamsSidebarProps> = ({
                   }`}
                 >
                   <div className="flex items-center">
-                    <div className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-white shadow-sm text-lg sm:text-xl mr-2 sm:mr-3">
-                      {team.icon}
+                    <div className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-full overflow-hidden bg-white shadow-sm mr-2 sm:mr-3">
+                      {team.iconUrl ? (
+                        <img
+                          src={team.iconUrl}
+                          alt={`${team.name} icon`}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                            const parent = e.currentTarget.parentElement;
+                            if (parent) {
+                              const iconSpan = document.createElement("span");
+                              iconSpan.className = "text-lg sm:text-xl";
+                              iconSpan.textContent =
+                                team.icon || team.name.charAt(0);
+                              parent.appendChild(iconSpan);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span className="text-lg sm:text-xl">
+                          {team.icon || team.name.charAt(0)}
+                        </span>
+                      )}
                     </div>
                     <span className="font-medium truncate text-sm sm:text-base">
                       {team.name}
