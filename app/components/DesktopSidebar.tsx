@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { SidebarProps } from "../hooks/useSideBar";
-import { Squares2X2Icon } from "@heroicons/react/24/outline";
+import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 
 type DesktopSidebarProps = Pick<
   SidebarProps,
@@ -18,6 +18,11 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   const handleMenuItemClick = (key: string, route: string) => {
     setActiveTab(key);
     navigateTo(route);
+  };
+
+  // Handle profile settings click
+  const handleSettingsClick = () => {
+    navigateTo("/profile");
   };
 
   return (
@@ -50,8 +55,13 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
       </nav>
 
       <div className="mt-auto mb-6">
-        <button className="text-gray-400 hover:text-white transition-colors">
-          <Squares2X2Icon className="w-6 h-6" />
+        <button
+          className="w-full flex flex-col items-center justify-center py-3 text-gray-400 hover:text-white hover:bg-gray-800 transition-all duration-300"
+          onClick={handleSettingsClick}
+          title="Profile Settings"
+        >
+          <Cog6ToothIcon className="w-6 h-6 mb-1" />
+          <span className="text-xs">Settings</span>
         </button>
       </div>
     </div>

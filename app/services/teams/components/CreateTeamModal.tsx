@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { api as axios } from "@/app/lib/api";
+
 interface CreateTeamModalProps {
   onClose: () => void;
   onSubmit: (teamData: {
     name: string;
-    icon: string;
     description: string;
+    id: string;
   }) => void;
 }
 
@@ -17,57 +18,74 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
 }) => {
   const [teamName, setTeamName] = useState("");
   const [teamDescription, setTeamDescription] = useState("");
-  const [teamIcon, setTeamIcon] = useState("💼");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Opțiuni de emoji pentru icon
-  const iconOptions = [
-    "💼",
-    "💻",
-    "📊",
-    "🎯",
-    "🚀",
-    "🛠️",
-    "📱",
-    "🔍",
-    "🎨",
-    "📝",
-    "🔬",
-    "📚",
-    "🏆",
-    "🌐",
-    "📈",
-  ];
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedImage(file);
+
+      // Create a preview of the selected image
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!teamName.trim()) {
-      return; // Validare simplă
+      return; // Simple validation
     }
 
     setIsLoading(true);
     setError(null);
 
     try {
+      // First request: Create team and get team ID
       const response = await axios.post("/api/teams", {
         name: teamName,
-        icon: teamIcon,
         description: teamDescription,
       });
+      console.log("Main response from FIRST REQUEST: !!!!!!", response.data);
 
       if (response.data) {
-        console.log("Raspuns tams created: ");
-        console.log(response.data);
-        // Apelăm onSubmit cu datele echipei
+        const teamId = response.data;
+
+        // Second request: Upload image if one was selected
+        if (selectedImage) {
+          const formData = new FormData();
+          formData.append("image", selectedImage);
+          formData.append("teamId", teamId);
+          console.log("Acum SE TRIMITE AL DOILEA..................");
+          await axios.post("/api/teams/upload-image", formData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          });
+        }
+        console.log("!?????????????????????????!!!!!!!!!..................");
+        console.log("Team created successfully:", response.data);
+
+        // Call onSubmit with the team data
         onSubmit({
           name: teamName,
-          icon: teamIcon,
           description: teamDescription,
+          id: teamId,
         });
 
-        onClose(); // Închidem modalul
+        onClose(); // Close the modal
       }
     } catch (error) {
       setError("A apărut o eroare la crearea echipei");
@@ -111,23 +129,52 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
                 htmlFor="teamIcon"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Pictogramă
+                Imagine echipă
               </label>
-              <div className="flex flex-wrap gap-2">
-                {iconOptions.map((icon) => (
-                  <button
-                    key={icon}
-                    type="button"
-                    onClick={() => setTeamIcon(icon)}
-                    className={`w-10 h-10 flex items-center justify-center text-2xl border rounded-md ${
-                      teamIcon === icon
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    {icon}
-                  </button>
-                ))}
+              <div className="flex items-center justify-center">
+                <div
+                  onClick={handleImageClick}
+                  className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50"
+                >
+                  {imagePreview ? (
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                  ) : (
+                    <>
+                      <svg
+                        className="h-8 w-8 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                        />
+                      </svg>
+                      <span className="mt-2 text-xs text-gray-500">
+                        Încarcă imagine
+                      </span>
+                    </>
+                  )}
+                </div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+              </div>
+              <div className="mt-2 text-xs text-center text-gray-500">
+                {selectedImage && (
+                  <span>Fișier selectat: {selectedImage.name}</span>
+                )}
               </div>
             </div>
 
@@ -178,16 +225,22 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
               type="button"
               onClick={onClose}
               className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isLoading}
             >
               Anulează
             </button>
             <button
               type="submit"
               className="px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isLoading}
             >
-              Creează echipa
+              {isLoading ? "Se crează..." : "Creează echipa"}
             </button>
           </div>
+
+          {error && (
+            <div className="px-6 pb-4 text-red-500 text-sm">{error}</div>
+          )}
         </form>
       </div>
     </div>

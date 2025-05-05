@@ -416,7 +416,7 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
           <div className="flex items-center space-x-3 sm:space-x-4">
             <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md">
-              <span className="text-lg sm:text-xl">{team.icon}</span>
+              <span className="text-lg sm:text-xl">{team.iconUrl}</span>
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
@@ -608,15 +608,62 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.2 }}
-                className="bg-white rounded-xl sm:rounded-2xl shadow-md p-4 sm:p-6 border border-gray-100"
+                className="grid grid-cols-1 lg:grid-cols-2 gap-6"
               >
-                <ChannelList
-                  teamId={team.id}
-                  channels={team.channels || []}
-                  onJoinChannel={onJoinChannel}
-                  onCreateChannel={() => onCreateChannel("")}
-                  onSelectChannel={onSelectChannel}
-                />
+                {/* Channels Panel */}
+                <div className="bg-white rounded-xl sm:rounded-2xl shadow-md p-4 sm:p-6 border border-gray-100">
+                  <h3 className="text-lg font-semibold mb-4">Channels</h3>
+                  <ChannelList
+                    teamId={team.id}
+                    channels={team.channels || []}
+                    onJoinChannel={onJoinChannel}
+                    onCreateChannel={() => onCreateChannel("")}
+                    onSelectChannel={onSelectChannel}
+                  />
+                </div>
+
+                {/* Team Members Panel */}
+                <div className="bg-white rounded-xl sm:rounded-2xl shadow-md p-4 sm:p-6 border border-gray-100">
+                  <h3 className="text-lg font-semibold mb-4">Team Members</h3>
+                  <div className="overflow-y-auto max-h-[600px]">
+                    {users.map((member) => (
+                      <div
+                        key={member.id}
+                        onClick={() => router.push(`/profile/${member.id}`)}
+                        className="flex items-center p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer rounded-md"
+                      >
+                        {member.profileImage ? (
+                          <img
+                            src={member.profileImage}
+                            alt={`${member.firstName} ${member.lastName}`}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+                            {member.firstName?.charAt(0)}
+                            {member.lastName?.charAt(0)}
+                          </div>
+                        )}
+                        <div className="ml-3 flex-1">
+                          <div className="flex items-center">
+                            <span className="font-medium">
+                              {member.firstName} {member.lastName}
+                            </span>
+                            {member.status === "online" && (
+                              <span className="ml-2 h-2 w-2 rounded-full bg-green-400"></span>
+                            )}
+                          </div>
+                          <p className="text-gray-500 text-sm">
+                            {member.department || "No department"}
+                          </p>
+                        </div>
+                        <div className="text-blue-500 hover:text-blue-700">
+                          <FiChevronRight className="h-5 w-5" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </motion.div>
             )}
 

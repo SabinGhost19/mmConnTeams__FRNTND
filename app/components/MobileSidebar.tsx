@@ -3,7 +3,7 @@ import React from "react";
 import {
   Bars3Icon,
   XMarkIcon,
-  Squares2X2Icon,
+  Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 import { SidebarProps } from "../hooks/useSideBar";
 
@@ -29,6 +29,12 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
   const handleMenuItemClick = (key: string, route: string) => {
     setActiveTab(key);
     navigateTo(route);
+    setSidebarOpen(false);
+  };
+
+  // Handle profile settings click
+  const handleSettingsClick = () => {
+    navigateTo("/profile");
     setSidebarOpen(false);
   };
 
@@ -88,9 +94,13 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
           ))}
         </nav>
 
-        <div className="mt-auto mb-6">
-          <button className="text-gray-400 hover:text-white transition-colors p-2">
-            <Squares2X2Icon className="w-6 h-6" />
+        <div className="mt-auto mb-6 w-full px-2">
+          <button
+            className="w-full flex items-center py-3 px-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-all duration-200"
+            onClick={handleSettingsClick}
+          >
+            <Cog6ToothIcon className="w-6 h-6 min-w-6" />
+            <span className="text-sm ml-3 whitespace-nowrap">Settings</span>
           </button>
         </div>
       </div>
