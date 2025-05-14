@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import Footer from "../services/chatAsistant/components/Footer";
 
-// Define proper TypeScript types
 type FeatureItem = {
   icon: React.ReactNode;
   title: string;
@@ -67,7 +66,6 @@ const LearnMorePage: React.FC = () => {
     }
   };
 
-  // Type-safe features data
   const features: Record<TabKey, FeatureItem[]> = {
     communication: [
       {

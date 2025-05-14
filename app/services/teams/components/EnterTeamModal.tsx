@@ -1,16 +1,18 @@
 // components/TeamsLanding/EnterTeamModal.tsx
 "use client";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface EnterTeamModalProps {
   onClose: () => void;
-  onEnterTeam: (teamId: string) => void;
+  onEnterTeam: (teamId: string) => Promise<any>;
 }
 
 const EnterTeamModal: React.FC<EnterTeamModalProps> = ({
   onClose,
   onEnterTeam,
 }) => {
+  const router = useRouter();
   const [teamId, setTeamId] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -28,8 +30,18 @@ const EnterTeamModal: React.FC<EnterTeamModalProps> = ({
       setIsSubmitting(true);
       const trimmedTeamId = teamId.trim();
       console.log("Submitting team ID:", trimmedTeamId);
-      await onEnterTeam(trimmedTeamId);
+
+      // Wait for the server response
+      const response = await onEnterTeam(trimmedTeamId);
+
+      // Close the modal
       onClose();
+
+      // Refresh the page to show updated data
+      router.refresh();
+
+      // Alternatively, you can use a full page reload if router.refresh() doesn't update all components
+      // window.location.reload();
     } catch (err) {
       console.error("Error entering team:", err);
       setError("Invalid team ID or server error. Please try again.");
@@ -46,6 +58,7 @@ const EnterTeamModal: React.FC<EnterTeamModalProps> = ({
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
+            disabled={isSubmitting}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -89,7 +102,7 @@ const EnterTeamModal: React.FC<EnterTeamModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isSubmitting}
             >
               Cancel

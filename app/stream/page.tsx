@@ -1,4 +1,3 @@
-// File: TeamSyncApp.tsx
 "use client";
 
 import { useState } from "react";
@@ -24,7 +23,6 @@ const TeamSyncApp = () => {
     useState<SelectedDevices | null>(null);
   const [mediaState, setMediaState] = useState<MediaState | null>(null);
 
-  // Initialize the WebRTC hook at the app level
   const webRTC = useWebRTC();
 
   const handleJoinConference = async (
@@ -34,26 +32,22 @@ const TeamSyncApp = () => {
     media: MediaState
   ) => {
     try {
-      // Initialize media with the selected devices
       await webRTC.initializeMedia(media.video, media.audio, {
         videoId: devices.camera,
         audioId: devices.microphone,
       });
 
-      // Save the setup information
       setUserName(name);
       setRoomId(room);
       setSelectedDevices(devices);
       setMediaState(media);
 
-      // Create or join the room using WebRTC
       if (room) {
         await webRTC.joinRoom(room, name);
       } else {
         await webRTC.createRoom(name);
       }
 
-      // Move to the conference room
       setIsInPreSetup(false);
     } catch (error) {
       console.error("Failed to join conference:", error);

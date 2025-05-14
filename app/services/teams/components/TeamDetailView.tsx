@@ -35,6 +35,8 @@ import File from "@/app/types/models_types/file";
 import { NewEventWithAttendees } from "@/app/types/models_types/eventTypes";
 import { getFullName, getAvatarUrl } from "@/app/lib/userUtils";
 import { api as axios } from "@/app/lib/api";
+import TicketList from "./TicketList";
+import ChannelTickets from "./ChannelTickets";
 
 // Import ViewType enum from TeamsLandingPage
 import { ViewType } from "../TeamsLandingPage";
@@ -59,6 +61,7 @@ interface TeamDetailViewProps {
   events: Event[];
   files: BackendFile[];
   selectedView: ViewType;
+  selectedChannel?: any;
   onChangeView: (view: ViewType) => void;
   onStartChat: (userId: string) => void;
   onJoinChannel: (teamId: string, channelId: string) => void;
@@ -104,6 +107,7 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
   events,
   files,
   selectedView,
+  selectedChannel,
   onChangeView,
   onStartChat,
   onJoinChannel,
@@ -160,6 +164,9 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
     null
   );
 
+  // Add selectedChannel state if it doesn't exist
+  const [selectedChannelState, setSelectedChannelState] = useState<any>(null);
+
   // Fetch files when view changes to "files"
   useEffect(() => {
     if (selectedView === ViewType.FILES) {
@@ -204,7 +211,7 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
     fetchNotifications();
 
     // Opțional: actualizam notificările la intervale regulate
-    const intervalId = setInterval(fetchNotifications, 30000); // 30 secunde
+    const intervalId = setInterval(fetchNotifications, 30000); // 30 seconds
 
     return () => clearInterval(intervalId);
   }, []);
@@ -685,6 +692,19 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
                     ))}
                   </div>
                 </div>
+
+                {selectedView === ViewType.CHANNEL &&
+                  team.channels &&
+                  team.channels.length > 0 &&
+                  selectedChannel && (
+                    <div className="mb-4">
+                      <ChannelTickets
+                        channelId={selectedChannel.id}
+                        teamId={team.id}
+                        teamMembers={users}
+                      />
+                    </div>
+                  )}
               </motion.div>
             )}
 

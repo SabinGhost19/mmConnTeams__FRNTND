@@ -20,7 +20,7 @@ export default function Home() {
               height={32}
               className="mr-2"
             />
-            <span className="text-xl font-bold text-blue-600">MMConnSG</span>
+            <span className="text-xl font-bold text-blue-600">TeamSync</span>
           </div>
           <div className="hidden md:flex space-x-6">
             <Link
@@ -120,7 +120,7 @@ export default function Home() {
           </h1>
           <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto">
             A modern platform for team communication, video conferencing, and
-            more.
+            more
           </p>
           <div className="flex justify-center space-x-4">
             <Link

@@ -1,17 +1,23 @@
 // components/TeamsLanding/CreateChannelModal.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { api as axios } from "@/app/lib/api";
+import { useRouter } from "next/navigation";
+
+// Define the ChannelDTO interface to match the backend expectation
+interface ChannelDTO {
+  id?: string;
+  teamId: string;
+  name: string;
+  description?: string;
+  isPrivate: boolean;
+}
 
 interface CreateChannelModalProps {
   teamId: string;
   onClose: () => void;
-  onSubmit: (channelData: {
-    name: string;
-    description: string;
-    isPrivate: boolean;
-  }) => void;
+  onSubmit: (channelData: ChannelDTO) => void;
 }
 
 const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
@@ -19,44 +25,86 @@ const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const router = useRouter();
   const [channelName, setChannelName] = useState("");
   const [channelDescription, setChannelDescription] = useState("");
-  const [isPrivate, setIsPrivate] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isReloading, setIsReloading] = useState(false);
+
+  // Use a ref to track if the component is still mounted
+  const isMountedRef = useRef(true);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!channelName.trim()) {
+      setError("Numele canalului este obligatoriu");
+      return;
+    }
+
+    // Check if channel name contains spaces
+    if (channelName.includes(" ")) {
+      setError(
+        "Numele canalului nu poate conține spații. Folosește cratime (-) sau underscore (_)."
+      );
       return;
     }
 
     setIsLoading(true);
     setError(null);
 
-    try {
-      const response = await axios.post("/api/channel", {
-        teamId: teamId,
-        name: channelName, // Nu channelName ci name
-        description: channelDescription,
-        isPrivate: isPrivate,
-      });
+    // Create the ChannelDTO object
+    const channelDTO: ChannelDTO = {
+      teamId: teamId,
+      name: channelName,
+      description: channelDescription || undefined,
+      isPrivate: false,
+    };
 
+    try {
+      const response = await axios.post<ChannelDTO>("/api/channel", channelDTO);
+
+      // Call onSubmit with the response data
       if (response.data) {
-        console.log("Channel creat:", response.data);
-        onSubmit({
-          name: channelName,
-          description: channelDescription,
-          isPrivate: isPrivate,
-        });
-        onClose();
+        onSubmit(response.data);
       }
-    } catch (error) {
-      setError("A apărut o eroare la crearea canalului");
-      console.error("Eroare la crearea canalului:", error);
-    } finally {
-      setIsLoading(false);
+
+      // Set reloading flag to prevent error display during reload
+      setIsReloading(true);
+
+      // Close the modal
+      onClose();
+
+      // Small delay before reload to prevent race conditions
+      setTimeout(() => {
+        // Full page reload (equivalent to Ctrl+R)
+        window.location.reload();
+      }, 100);
+    } catch (error: any) {
+      // Only show errors if we're not already reloading the page and component is still mounted
+      if (!isReloading && isMountedRef.current) {
+        console.error("Eroare la crearea canalului:", error);
+
+        // Filter out aborted request errors
+        if (
+          error.message === "Request aborted" ||
+          error.code === "ECONNABORTED"
+        ) {
+          // Don't display these errors to the user
+          console.log("Request was aborted during page transition");
+        } else if (error.response?.data?.message) {
+          setError(`Eroare: ${error.response.data.message}`);
+        } else if (error.message) {
+          setError(`Eroare: ${error.message}`);
+        } else {
+          setError(
+            "A apărut o eroare la crearea canalului. Vă rugăm încercați din nou."
+          );
+        }
+
+        setIsLoading(false);
+      }
     }
   };
 
@@ -69,7 +117,9 @@ const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 focus:outline-none"
+            disabled={isLoading}
+            className="text-gray-400 hover:text-gray-600 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Close"
           >
             <svg
               className="h-5 w-5"
@@ -108,6 +158,7 @@ const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
                   placeholder="ex: general"
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-r-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
+                  disabled={isLoading}
                 />
               </div>
               <p className="mt-1 text-xs text-gray-500">
@@ -130,35 +181,15 @@ const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
                 placeholder="Despre ce este acest canal?"
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={isLoading}
               />
             </div>
 
-            <div className="mb-4">
-              <div className="flex items-start">
-                <div className="flex items-center h-5">
-                  <input
-                    id="privateChannel"
-                    name="privateChannel"
-                    type="checkbox"
-                    checked={isPrivate}
-                    onChange={() => setIsPrivate(!isPrivate)}
-                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                </div>
-                <div className="ml-3 text-sm">
-                  <label
-                    htmlFor="privateChannel"
-                    className="font-medium text-gray-700"
-                  >
-                    Canal privat
-                  </label>
-                  <p className="text-gray-500">
-                    Acest canal va fi vizibil doar pentru membri invitați
-                    specific.
-                  </p>
-                </div>
+            {error && !isReloading && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-600">{error}</p>
               </div>
-            </div>
+            )}
 
             <div className="text-sm text-gray-500">
               <p>După creare, poți adăuga membri sau configura integrări.</p>
@@ -169,15 +200,45 @@ const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isLoading || isReloading}
+              className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Anulează
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isLoading || isReloading}
+              className="relative px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Creează canal
+              {isLoading ? (
+                <>
+                  <span className="opacity-0">Creează canal</span>
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                  </span>
+                </>
+              ) : (
+                "Creează canal"
+              )}
             </button>
           </div>
         </form>

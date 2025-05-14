@@ -4,14 +4,14 @@ import React, { useState } from "react";
 
 interface Channel {
   id: string;
-  name?: string; // Facem name optional pentru a preveni erori
+  name?: string; // optional name to prevent errors
   unreadCount?: number;
-  [key: string]: any; // Pentru alte proprietăți necunoscute
+  [key: string]: any; // for other unknown properties
 }
 
 interface ChannelListProps {
   teamId: string;
-  channels?: Channel[]; // Facem channels optional
+  channels?: Channel[]; // optional channels array
   onJoinChannel: (teamId: string, channelId: string) => void;
   onCreateChannel: () => void;
   onSelectChannel: (channelId: string) => void;
@@ -19,7 +19,7 @@ interface ChannelListProps {
 
 const ChannelList: React.FC<ChannelListProps> = ({
   teamId,
-  channels = [], // Valoare implicită array gol
+  channels = [], // default empty array
   onJoinChannel,
   onCreateChannel,
   onSelectChannel,
@@ -27,9 +27,9 @@ const ChannelList: React.FC<ChannelListProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("activity");
 
-  // Filtrare sigură după textul căutat
+  // safe filtering by search text
   const filteredChannels = channels.filter((channel) => {
-    // Verificăm existența channel și a numelui
+    // check if channel and name exist
     if (!channel || !channel.name) return false;
 
     try {
@@ -40,30 +40,30 @@ const ChannelList: React.FC<ChannelListProps> = ({
     }
   });
 
-  // Sortare sigură a canalelor
+  // safe channel sorting
   const sortedChannels = [...filteredChannels].sort((a, b) => {
-    // Verificăm existența obiectelor pentru sortare
+    // check objects exist for sorting
     if (!a || !b) return 0;
 
     if (sortBy === "name") {
-      // Verificăm existența numelor
+      // check names exist
       const nameA = a.name || "";
       const nameB = b.name || "";
       return nameA.localeCompare(nameB);
     } else if (sortBy === "unread") {
-      // Verificăm existența unreadCount
+      // check unreadCount exists
       const countA = a.unreadCount || 0;
       const countB = b.unreadCount || 0;
       return countB - countA;
     } else {
-      // Activitate - implicit sortăm după unread
+      // activity - default sort by unread count
       const countA = a.unreadCount || 0;
       const countB = b.unreadCount || 0;
       return countB - countA;
     }
   });
 
-  // Restul componentei rămâne la fel...
+  // rest of component remains the same...
   return (
     <div className="bg-white rounded-lg shadow">
       {/* Header cu buton de creare canal */}
@@ -139,7 +139,7 @@ const ChannelList: React.FC<ChannelListProps> = ({
       {sortedChannels.length > 0 ? (
         <div className="divide-y divide-gray-200">
           {sortedChannels.map((channel) => {
-            // Verificare existență canal înainte de randare
+            // verify channel exists before rendering
             if (!channel || !channel.id) return null;
 
             return (
@@ -177,7 +177,7 @@ const ChannelList: React.FC<ChannelListProps> = ({
                     title="Mai multe opțiuni"
                     onClick={(e) => {
                       e.stopPropagation();
-                      // Aici ar veni un meniu cu opțiuni pentru canal
+                      // channel options menu would go here
                     }}
                   >
                     <svg

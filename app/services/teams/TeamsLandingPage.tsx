@@ -33,6 +33,7 @@ import {
 import { BsThreeDotsVertical } from "react-icons/bs";
 
 // Enum pentru a gestiona diferitele view-uri posibile
+// view type enum for different possible views
 export enum ViewType {
   OVERVIEW = "overview",
   TEAM_DETAIL = "team_detail",
@@ -55,6 +56,7 @@ interface TeamData {
 }
 
 // Tipul pentru datele necesare la crearea unui canal
+// channel creation data type
 interface ChannelData {
   name: string;
   description: string;
@@ -63,6 +65,7 @@ interface ChannelData {
 
 //for request it contain user id and team id
 //for getting the name of the team in the db
+// invite data containing user and team info
 interface InviteData {
   email: string;
   role: string;
@@ -70,6 +73,7 @@ interface InviteData {
 }
 
 // Interface pentru datele de editare a canalului
+// channel edit data interface
 interface EditChannelData {
   name: string;
   description: string;
@@ -198,7 +202,6 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
           roles: user.roles,
           department: user.department,
           profileImage: user.profileImage,
-          // Adăugă orice alte câmpuri vrei să vezi
         });
       });
       return response.data;
@@ -232,31 +235,32 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
 
   const handleSelectChannel = (channelId: string) => {
     if (!selectedTeam) return;
-    //request -------------------------
+
     const channel = selectedTeam?.channels?.find(
       (c: Channel) => c.id === channelId
     );
+
     if (channel) {
       setSelectedChannel(channel);
       setCurrentView(ViewType.CHANNEL);
+      setSelectedView(ViewType.CHANNEL);
     }
   };
 
   const handleStartChat = (userId: string) => {
     setSelectedUserId(userId);
-    // Redirect to chat page with the user ID as query parameter
     router.push(`/chat?userId=${userId}`);
   };
 
   const handleJoinChannel = async (teamId: string, channelId: string) => {
-    try {
-      await axios.post(`/api/teams/${teamId}/channels/${channelId}/join`);
-      // Refresh team data
-      const response = await axios.get<Team>(`/api/teams/${teamId}`);
-      setSelectedTeam(response.data);
-    } catch (error) {
-      console.error("Error joining channel:", error);
-    }
+    // try {
+    //   await axios.post(`/api/teams/${teamId}/channels/${channelId}/join`);
+    //   // Refresh team data
+    //   const response = await axios.get<Team>(`/api/teams/${teamId}`);
+    //   setSelectedTeam(response.data);
+    // } catch (error) {
+    //   console.error("Error joining channel:", error);
+    // }
   };
 
   const handleCreateTeam = (teamData: TeamData) => {
@@ -279,7 +283,6 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
           teamId: timestamp,
         },
       ],
-      // Add missing required properties with default values
       iconUrl: "",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -290,12 +293,10 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
       channelNr: 1,
     } as unknown as Team;
 
-    // Aici ar trebui să faci request POST către backend
     setTeams([...teams, newTeam]);
 
     setShowCreateTeamModal(false);
 
-    // Selectăm automat noua echipă
     setSelectedTeam(newTeam);
     setSelectedChannel(newTeam.channels?.[0] || null);
     setCurrentView(ViewType.TEAM_DETAIL);
@@ -305,14 +306,12 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
     if (!selectedTeam) return;
 
     try {
-      // Trimite datele către backend
       const response = await axios.get<Channel>(
         `/api/teams/${selectedTeam.id}/channels`
       );
 
       const newChannel = response.data;
 
-      // Actualizează starea locală cu răspunsul de la backend
       const updatedTeams = teams.map((team: Team) => {
         if (team.id === selectedTeam.id) {
           return {
@@ -332,7 +331,6 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
       setCurrentView(ViewType.CHANNEL);
     } catch (error) {
       console.error("Error creating channel:", error);
-      // Poți adăuga aici notificare pentru utilizator
     } finally {
       setShowCreateChannelModal(false);
     }
@@ -411,8 +409,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
 
           if (existingReactionIndex > -1) {
             // Toggle reaction
-            // (logica similară cu cea din exemplul tău)
-            return message; // Simplificat pentru exemplu
+            return message;
           } else {
             // Add new reaction
             return {
@@ -447,7 +444,6 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
       const newEvent = response.event;
       setEvents([...events, newEvent]);
 
-      // Show success notification
       alert("Evenimentul a fost creat cu succes!");
     } catch (error) {
       console.error("Error creating event:", error);
@@ -455,20 +451,18 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
     }
   };
 
-  // Funcție pentru actualizarea canalului
+  // channel update function
   const handleUpdateChannel = async (channelData: EditChannelData) => {
     if (!selectedTeam || !selectedChannel) return;
 
     setIsUpdatingChannel(true);
 
     try {
-      // Validează datele (opțional poți adăuga mai multe validări)
       if (!channelData.name.trim()) {
         alert("Numele canalului nu poate fi gol!");
         return;
       }
 
-      // Trimite datele către server
       const response = await axios.put(
         `/api/teams/${selectedTeam.id}/channels/${selectedChannel.id}`,
         channelData,
@@ -764,6 +758,7 @@ const TeamsLandingPage: React.FC<TeamsLandingPageProps> = ({
               events={events}
               files={files}
               selectedView={selectedView}
+              selectedChannel={selectedChannel}
               onChangeView={handleChangeView}
               onSelectChannel={handleSelectChannel}
               onJoinChannel={handleJoinChannel}

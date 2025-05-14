@@ -997,12 +997,14 @@ const registerPage = () => {
                       </label>
                       <p className="text-gray-500">
                         Am citit și sunt de acord cu{" "}
-                        <a
-                          href="#"
+                        <Link
+                          href="/terms?from=register"
                           className="text-blue-600 hover:text-blue-500"
+                          target="_blank"
+                          rel="noopener noreferrer"
                         >
                           Termenii și condițiile
-                        </a>
+                        </Link>
                         .
                       </p>
                     </div>
@@ -1035,12 +1037,14 @@ const registerPage = () => {
                       </label>
                       <p className="text-gray-500">
                         Am citit și sunt de acord cu{" "}
-                        <a
-                          href="#"
+                        <Link
+                          href="/privacy?from=register"
                           className="text-blue-600 hover:text-blue-500"
+                          target="_blank"
+                          rel="noopener noreferrer"
                         >
                           Politica de confidențialitate
-                        </a>
+                        </Link>
                         .
                       </p>
                     </div>
