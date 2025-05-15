@@ -1,11 +1,14 @@
 // components/TeamsChat/TeamsSidebar.tsx
 "use client";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   PlusIcon,
   UserGroupIcon,
   ChatBubbleLeftIcon,
   UserIcon,
+  HomeIcon,
+  CogIcon,
 } from "@heroicons/react/24/outline";
 
 interface UserDisplay {
@@ -81,6 +84,7 @@ const TeamsSidebar: React.FC<TeamsSidebarProps> = ({
   users = [],
   currentUserId = "",
 }) => {
+  const router = useRouter();
   const [expandedTeams, setExpandedTeams] = useState<string[]>([
     selectedTeam?.id || "",
   ]);
@@ -115,6 +119,16 @@ const TeamsSidebar: React.FC<TeamsSidebarProps> = ({
     onMobileSidebarClose();
   };
 
+  const navigateToDashboard = () => {
+    router.push("/dashboard");
+    onMobileSidebarClose();
+  };
+
+  const navigateToProfile = () => {
+    router.push("/profile");
+    onMobileSidebarClose();
+  };
+
   // Filter out the current user from the users list
   const filteredUsers = users.filter((user) => user.id !== currentUserId);
 
@@ -135,9 +149,28 @@ const TeamsSidebar: React.FC<TeamsSidebarProps> = ({
         } md:translate-x-0 transition-transform duration-200 ease-in-out z-30`}
       >
         <div className="flex flex-col h-full">
-          {/* Header */}
+          {/* Header with Dashboard button */}
           <div className="p-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold">Teams</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Teams</h2>
+              <div className="flex">
+                <button
+                  onClick={navigateToProfile}
+                  className="flex items-center justify-center p-2 text-gray-600 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors duration-150 mr-2"
+                  title="Settings"
+                >
+                  <CogIcon className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={navigateToDashboard}
+                  className="flex items-center justify-center p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-150"
+                  title="Go to Dashboard"
+                >
+                  <HomeIcon className="w-5 h-5" />
+                  <span className="ml-2 text-sm font-medium">Dashboard</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Teams List */}

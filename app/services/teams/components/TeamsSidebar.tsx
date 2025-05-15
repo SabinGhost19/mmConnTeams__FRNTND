@@ -14,6 +14,11 @@ import {
   FiHome,
   FiSettings,
   FiStar,
+  FiGrid,
+  FiCompass,
+  FiLayout,
+  FiActivity,
+  FiZap,
 } from "react-icons/fi";
 
 interface TeamsSidebarProps {
@@ -44,9 +49,19 @@ const TeamsSidebar: React.FC<TeamsSidebarProps> = ({
     team.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Navighează către pagina de dashboard
+  const navigateToDashboard = () => {
+    router.push("/dashboard");
+  };
+
   // Navighează către pagina de chat
   const goToChat = () => {
     router.push("/teams");
+  };
+
+  // Navighează către pagina de profil
+  const goToProfile = () => {
+    router.push("/profile");
   };
 
   return (
@@ -73,6 +88,24 @@ const TeamsSidebar: React.FC<TeamsSidebarProps> = ({
             </motion.button>
           )}
         </div>
+      </div>
+
+      {/* Dashboard Button - Redesigned with Rocket icon */}
+      <div className="px-4 py-3 border-b border-gray-200">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={navigateToDashboard}
+          className="w-full flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium shadow-md transition-all duration-200"
+        >
+          <span className="flex items-center">
+            <FiZap className="h-5 w-5 mr-3" />
+            <span className="text-sm font-semibold">Dashboard</span>
+          </span>
+          <span className="bg-white/20 rounded-full p-1">
+            <FiCompass className="h-4 w-4" />
+          </span>
+        </motion.button>
       </div>
 
       {/* Search */}
@@ -106,7 +139,7 @@ const TeamsSidebar: React.FC<TeamsSidebarProps> = ({
             className="w-full flex items-center p-2 sm:p-2.5 text-gray-700 hover:text-blue-700 bg-white hover:bg-blue-50 rounded-xl shadow-sm transition-all duration-200 border border-gray-100"
           >
             <div className="flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-blue-100 text-blue-600 mr-2 sm:mr-3">
-              <FiHome className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <FiLayout className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
             <span className="text-xs sm:text-sm font-medium">
               Back to Overview
@@ -218,7 +251,8 @@ const TeamsSidebar: React.FC<TeamsSidebarProps> = ({
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              className="p-1.5 sm:p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-full focus:outline-none transition-all duration-200"
+              onClick={goToProfile}
+              className="p-1.5 sm:p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full focus:outline-none transition-all duration-200"
               title="Settings"
             >
               <FiSettings className="h-4 w-4 sm:h-5 sm:w-5" />

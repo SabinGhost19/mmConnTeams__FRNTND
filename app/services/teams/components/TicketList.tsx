@@ -34,8 +34,12 @@ const TicketList: React.FC<TicketListProps> = ({
 }) => {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "assignedToMe" | "createdByMe">(
+    "all"
+  );
 
   // modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -55,6 +59,21 @@ const TicketList: React.FC<TicketListProps> = ({
       fetchTickets();
     }
   }, [channelId, user?.id]);
+
+  // update filtered tickets when tickets or filter changes
+  useEffect(() => {
+    if (filter === "assignedToMe") {
+      setFilteredTickets(
+        tickets.filter((ticket) => ticket.destinationId === user?.id)
+      );
+    } else if (filter === "createdByMe") {
+      setFilteredTickets(
+        tickets.filter((ticket) => ticket.sourceId === user?.id)
+      );
+    } else {
+      setFilteredTickets(tickets);
+    }
+  }, [tickets, filter, user?.id]);
 
   // fetch tickets from api
   const fetchTickets = async () => {
@@ -99,7 +118,7 @@ const TicketList: React.FC<TicketListProps> = ({
       const newTicket: TicketDTO = {
         userId: user.id,
         channelId: channelId,
-        sourceId: teamId,
+        sourceId: user.id, // Set sourceId to user.id for tickets created by the user
         title: title,
         description: description,
         purpose: purpose,
@@ -166,6 +185,8 @@ const TicketList: React.FC<TicketListProps> = ({
 
   // open edit modal
   const openEditModal = (ticket: Ticket) => {
+    if (ticket.sourceId !== user?.id) return; // Only allow editing if user is the creator
+
     setCurrentTicket({
       id: ticket.id,
       userId: ticket.userId,
@@ -239,143 +260,215 @@ const TicketList: React.FC<TicketListProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-800">Channel Tickets</h2>
-        <button
-          onClick={openCreateModal}
-          className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center text-sm"
-        >
-          <FiPlus className="mr-2" />
-          New Ticket
-        </button>
+    <div className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-100 w-full min-w-0">
+      <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-blue-50 to-white border-b border-gray-200 flex flex-wrap justify-between items-center">
+        <h2 className="text-xl font-semibold text-gray-800 mb-2 sm:mb-0">
+          Channel Tickets
+        </h2>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
+          <button
+            onClick={() => setFilter("all")}
+            className={`py-2 px-3 sm:px-4 rounded-md text-sm font-medium transition-all duration-200 flex-grow sm:flex-grow-0 ${
+              filter === "all"
+                ? "bg-blue-600 text-white shadow-md"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            All Tickets
+          </button>
+          <button
+            onClick={() => setFilter("assignedToMe")}
+            className={`py-2 px-3 sm:px-4 rounded-md text-sm font-medium transition-all duration-200 flex-grow sm:flex-grow-0 ${
+              filter === "assignedToMe"
+                ? "bg-blue-600 text-white shadow-md"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            Assigned to Me
+          </button>
+          <button
+            onClick={() => setFilter("createdByMe")}
+            className={`py-2 px-3 sm:px-4 rounded-md text-sm font-medium transition-all duration-200 flex-grow sm:flex-grow-0 ${
+              filter === "createdByMe"
+                ? "bg-blue-600 text-white shadow-md"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            Created by Me
+          </button>
+          <button
+            onClick={openCreateModal}
+            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 sm:px-4 rounded-md flex items-center justify-center text-sm font-medium shadow-md transition-all duration-200 flex-grow sm:flex-grow-0"
+          >
+            <FiPlus className="mr-2" />
+            New Ticket
+          </button>
+        </div>
       </div>
 
       {loading ? (
-        <div className="p-6 text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading tickets...</p>
+        <div className="p-8 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Loading tickets...</p>
         </div>
       ) : error ? (
-        <div className="p-6 text-center">
-          <div className="text-red-500 mb-2">
-            <FiAlertCircle className="h-10 w-10 mx-auto" />
+        <div className="p-8 text-center">
+          <div className="text-red-500 mb-3">
+            <FiAlertCircle className="h-12 w-12 mx-auto" />
           </div>
-          <p className="text-gray-700">{error}</p>
+          <p className="text-gray-700 font-medium">{error}</p>
           <button
             onClick={fetchTickets}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="mt-4 px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 shadow-md transition-all duration-200"
           >
             Try Again
           </button>
         </div>
-      ) : tickets.length === 0 ? (
-        <div className="p-6 text-center">
-          <p className="text-gray-600 mb-4">
-            No tickets found for this channel
+      ) : filteredTickets.length === 0 ? (
+        <div className="p-8 text-center">
+          <p className="text-gray-600 mb-4 font-medium">
+            {filter === "assignedToMe"
+              ? "No tickets assigned to you"
+              : filter === "createdByMe"
+              ? "No tickets created by you"
+              : "No tickets found for this channel"}
           </p>
           <button
             onClick={openCreateModal}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center"
+            className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 shadow-md transition-all duration-200 inline-flex items-center"
           >
             <FiPlus className="mr-2" />
-            Create First Ticket
+            Create Ticket
           </button>
         </div>
       ) : (
-        <div className="divide-y divide-gray-200">
-          {tickets.map((ticket) => (
-            <div key={ticket.id} className="p-6 hover:bg-gray-50">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-medium text-lg text-gray-900">
-                    {ticket.title}
-                  </h3>
+        <div className="divide-y divide-gray-100">
+          {filteredTickets.map((ticket) => (
+            <div
+              key={ticket.id}
+              className="p-5 sm:p-6 hover:bg-blue-50/50 transition-colors duration-200 group"
+            >
+              <div className="flex flex-col lg:flex-row justify-between lg:items-start gap-5">
+                {/* Main content */}
+                <div className="flex-1 min-w-0 w-full">
+                  {/* Title with possible deadline indicator */}
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="font-semibold text-lg text-gray-900 break-words leading-tight">
+                      {ticket.title}
+                    </h3>
+                    {ticket.deadline && (
+                      <div
+                        className={`flex items-center text-xs font-medium rounded-full px-2.5 py-1 ml-2 ${
+                          isPastDeadline(ticket.deadline)
+                            ? "bg-red-50 text-red-600"
+                            : "bg-green-50 text-green-600"
+                        }`}
+                      >
+                        <FiClock className="mr-1.5 flex-shrink-0" size={12} />
+                        {formatDate(ticket.deadline)}
+                      </div>
+                    )}
+                  </div>
 
+                  {/* Purpose - styled as a highlight */}
                   {ticket.purpose && (
-                    <p className="text-sm text-gray-600 mt-1">
-                      <span className="font-medium">Purpose:</span>{" "}
-                      {ticket.purpose}
-                    </p>
+                    <div className="mb-4">
+                      <p className="text-sm text-gray-700 font-medium">
+                        {ticket.purpose}
+                      </p>
+                    </div>
                   )}
 
+                  {/* Description - only shown if exists */}
                   {ticket.description && (
-                    <p className="text-sm text-gray-600 mt-2 whitespace-pre-line">
-                      {ticket.description}
-                    </p>
+                    <div className="mb-4 bg-white rounded-lg border border-gray-100 p-4 shadow-sm">
+                      <p className="text-sm text-gray-600 whitespace-pre-line break-words">
+                        {ticket.description}
+                      </p>
+                    </div>
                   )}
 
-                  <div className="mt-2 flex items-center text-sm">
-                    <span className="font-medium text-gray-600 mr-1">
-                      Created by:
-                    </span>
-                    <span className="text-blue-600">
-                      {getSourceName(ticket.sourceId)}
-                    </span>
-                  </div>
+                  {/* Meta information */}
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <div className="flex items-center text-xs bg-gray-50 px-3 py-1.5 rounded-full overflow-hidden border border-gray-100">
+                      <span className="font-medium text-gray-700 mr-1.5">
+                        Created by:
+                      </span>
+                      <span className="text-blue-600 font-medium truncate">
+                        {getSourceName(ticket.sourceId)}
+                      </span>
+                    </div>
 
-                  <div className="mt-2 flex items-center text-sm">
-                    <span className="font-medium text-gray-600 mr-1">
-                      Assigned to:
-                    </span>
-                    <span className="text-blue-600">
-                      {getDestinationName(ticket.destinationId)}
-                    </span>
-                  </div>
+                    <div className="flex items-center text-xs bg-gray-50 px-3 py-1.5 rounded-full overflow-hidden border border-gray-100">
+                      <span className="font-medium text-gray-700 mr-1.5">
+                        Assigned to:
+                      </span>
+                      <span className="text-blue-600 font-medium truncate">
+                        {getDestinationName(ticket.destinationId)}
+                      </span>
+                    </div>
 
-                  <div className="mt-3 flex items-center text-sm">
-                    <FiClock className="text-gray-400 mr-1" />
-                    <span
-                      className={`${
-                        isPastDeadline(ticket.deadline)
-                          ? "text-red-600 font-medium"
-                          : "text-gray-500"
-                      }`}
-                    >
-                      {formatDate(ticket.deadline)}
-                    </span>
+                    <div className="mt-3 text-xs text-gray-500 italic ml-1">
+                      Created: {formatDate(ticket.createdAt)}
+                      {ticket.updatedAt !== ticket.createdAt &&
+                        ` · Updated: ${formatDate(ticket.updatedAt)}`}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => openEditModal(ticket)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-                    title="Edit ticket"
-                  >
-                    <FiEdit />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteTicket(ticket.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded"
-                    title="Delete ticket"
-                  >
-                    <FiTrash2 />
-                  </button>
+                {/* Action buttons */}
+                <div className="flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2 flex-shrink-0">
+                  {/* Only show edit/delete if user is NOT the destination OR if user IS the source */}
+                  {ticket.destinationId !== user?.id ||
+                  ticket.sourceId === user?.id ? (
+                    <>
+                      <button
+                        onClick={() => openEditModal(ticket)}
+                        className={`p-2 rounded-lg ${
+                          ticket.sourceId === user?.id
+                            ? "text-blue-600 hover:bg-blue-100 hover:shadow-sm transition-all duration-200"
+                            : "text-gray-400 cursor-not-allowed"
+                        }`}
+                        title={
+                          ticket.sourceId === user?.id
+                            ? "Edit ticket"
+                            : "Cannot edit tickets you did not create"
+                        }
+                        disabled={ticket.sourceId !== user?.id}
+                      >
+                        <FiEdit size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTicket(ticket.id)}
+                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg hover:shadow-sm transition-all duration-200"
+                        title="Delete ticket"
+                      >
+                        <FiTrash2 size={18} />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="p-2 bg-blue-50 text-gray-600 italic text-xs text-center rounded-lg border border-blue-100">
+                      Assigned to you
+                    </div>
+                  )}
                 </div>
-              </div>
-
-              <div className="mt-3 text-xs text-gray-400">
-                Created: {formatDate(ticket.createdAt)}
-                {ticket.updatedAt !== ticket.createdAt &&
-                  ` · Updated: ${formatDate(ticket.updatedAt)}`}
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Ticket Modal */}
+      {/* Ticket Modal - updated styling */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl transform transition-all mx-auto border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-blue-50 to-white">
               <h2 className="text-lg font-bold text-gray-800">
                 {isEditing ? "Edit Ticket" : "Create New Ticket"}
               </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-full transition-all duration-200"
                 aria-label="Close"
               >
                 <svg
@@ -399,12 +492,13 @@ const TicketList: React.FC<TicketListProps> = ({
                 e.preventDefault();
                 isEditing ? handleUpdateTicket() : handleCreateTicket();
               }}
+              className="overflow-y-auto max-h-[calc(100vh-150px)]"
             >
               <div className="p-6">
-                <div className="mb-4">
+                <div className="mb-5">
                   <label
                     htmlFor="title"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-700 mb-1.5"
                   >
                     Title <span className="text-red-500">*</span>
                   </label>
@@ -414,15 +508,15 @@ const TicketList: React.FC<TicketListProps> = ({
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Ticket title"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     required
                   />
                 </div>
 
-                <div className="mb-4">
+                <div className="mb-5">
                   <label
                     htmlFor="purpose"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-700 mb-1.5"
                   >
                     Purpose
                   </label>
@@ -432,14 +526,14 @@ const TicketList: React.FC<TicketListProps> = ({
                     value={purpose}
                     onChange={(e) => setPurpose(e.target.value)}
                     placeholder="Brief purpose of this ticket"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
 
-                <div className="mb-4">
+                <div className="mb-5">
                   <label
                     htmlFor="description"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-700 mb-1.5"
                   >
                     Description
                   </label>
@@ -449,60 +543,62 @@ const TicketList: React.FC<TicketListProps> = ({
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Detailed description"
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
 
-                <div className="mb-4">
-                  <label
-                    htmlFor="destination"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Assign to
-                  </label>
-                  <select
-                    id="destination"
-                    value={destinationId}
-                    onChange={(e) => setDestinationId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select team member</option>
-                    {teamMembers.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.firstName} {member.lastName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label
+                      htmlFor="destination"
+                      className="block text-sm font-medium text-gray-700 mb-1.5"
+                    >
+                      Assign to
+                    </label>
+                    <select
+                      id="destination"
+                      value={destinationId}
+                      onChange={(e) => setDestinationId(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select team member</option>
+                      {teamMembers.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.firstName} {member.lastName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div className="mb-4">
-                  <label
-                    htmlFor="deadline"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Deadline
-                  </label>
-                  <input
-                    type="date"
-                    id="deadline"
-                    value={deadline}
-                    onChange={(e) => setDeadline(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div>
+                    <label
+                      htmlFor="deadline"
+                      className="block text-sm font-medium text-gray-700 mb-1.5"
+                    >
+                      Deadline
+                    </label>
+                    <input
+                      type="date"
+                      id="deadline"
+                      value={deadline}
+                      onChange={(e) => setDeadline(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-wrap justify-end gap-3 rounded-b-xl">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-5 py-2.5 bg-white border border-gray-200 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 w-full sm:w-auto mb-2 sm:mb-0"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-6 py-2.5 bg-blue-600 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 w-full sm:w-auto"
                 >
                   {isEditing ? "Update Ticket" : "Create Ticket"}
                 </button>

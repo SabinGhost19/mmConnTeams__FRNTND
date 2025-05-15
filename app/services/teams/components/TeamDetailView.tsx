@@ -149,6 +149,9 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
 
   // State pentru afișarea ID-ului echipei
   const [showTeamId, setShowTeamId] = useState<boolean>(false);
+  // Add state for expanded description
+  const [isDescriptionExpanded, setIsDescriptionExpanded] =
+    useState<boolean>(false);
 
   // State pentru notificări
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -419,80 +422,109 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
   return (
     <div className="flex flex-col h-full bg-gradient-to-br from-gray-50 to-blue-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4 shadow-sm rounded-b-xl">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
-          <div className="flex items-center space-x-3 sm:space-x-4">
-            <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md">
-              {team.iconUrl ? (
-                <img
-                  src={team.iconUrl}
-                  alt={`${team.name} icon`}
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    // If image fails to load, fallback to text icon
-                    e.currentTarget.style.display = "none";
-                    const parent = e.currentTarget.parentElement;
-                    if (parent) {
-                      const iconSpan = document.createElement("span");
-                      iconSpan.className = "text-lg sm:text-xl";
-                      iconSpan.textContent = team.icon || team.name.charAt(0);
-                      parent.appendChild(iconSpan);
-                    }
-                  }}
-                />
-              ) : (
-                <span className="text-lg sm:text-xl">
-                  {team.icon || team.name.charAt(0)}
-                </span>
-              )}
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
-                {team.name}
-              </h1>
-              <p className="text-xs sm:text-sm text-gray-500">
-                {team.description}
-              </p>
-              {showTeamId && team?.id && (
-                <div className="flex items-center mt-1 sm:mt-2">
-                  <span className="text-xs sm:text-sm text-gray-600 mr-2">
-                    Team ID: {team.id}
-                  </span>
-                  <button
-                    onClick={copyTeamId}
-                    className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm flex items-center"
-                  >
-                    <FiCopy className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
-                    Copy
-                  </button>
-                </div>
-              )}
-            </div>
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 sm:py-5 shadow-sm rounded-b-xl">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
+          {/* Team Icon - Larger and better aligned */}
+          <div className="flex-shrink-0 flex items-center justify-center h-16 w-16 sm:h-20 sm:w-20 rounded-xl overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg">
+            {team.iconUrl ? (
+              <img
+                src={team.iconUrl}
+                alt={`${team.name} icon`}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  // If image fails to load, fallback to text icon
+                  e.currentTarget.style.display = "none";
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    const iconSpan = document.createElement("span");
+                    iconSpan.className = "text-3xl sm:text-4xl font-bold";
+                    iconSpan.textContent = team.icon || team.name.charAt(0);
+                    parent.appendChild(iconSpan);
+                  }
+                }}
+              />
+            ) : (
+              <span className="text-3xl sm:text-4xl font-bold">
+                {team.icon || team.name.charAt(0)}
+              </span>
+            )}
           </div>
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowTeamId(!showTeamId)}
-              className="flex items-center px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-full transition-all duration-200 shadow-sm"
-            >
-              <FiCopy className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-              {showTeamId ? "Hide ID" : "Show ID"}
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowNotificationsModal(true)}
-              className="relative flex items-center px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-full transition-all duration-200 shadow-sm"
-            >
-              <FiBell className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-              Notifications
-              {unreadNotificationsCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs px-1 sm:px-1.5 py-0.5 rounded-full shadow-sm">
-                  {unreadNotificationsCount}
-                </span>
-              )}
-            </motion.button>
+
+          {/* Team Info */}
+          <div className="flex-1">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start w-full">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">
+                  {team.name}
+                </h1>
+
+                {/* Expandable team description */}
+                {team.description && (
+                  <div className="mt-1">
+                    <p
+                      className={`text-sm sm:text-base text-gray-600 ${
+                        isDescriptionExpanded ? "" : "line-clamp-2"
+                      }`}
+                    >
+                      {team.description}
+                    </p>
+                    {team.description.length > 100 && (
+                      <button
+                        onClick={() =>
+                          setIsDescriptionExpanded(!isDescriptionExpanded)
+                        }
+                        className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 mt-1 font-medium"
+                      >
+                        {isDescriptionExpanded ? "Show less" : "Show more"}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Team ID section */}
+                {showTeamId && team?.id && (
+                  <div className="flex items-center mt-2 sm:mt-3">
+                    <span className="text-xs sm:text-sm text-gray-600 mr-2">
+                      Team ID: {team.id}
+                    </span>
+                    <button
+                      onClick={copyTeamId}
+                      className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm flex items-center"
+                    >
+                      <FiCopy className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
+                      Copy
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center space-x-2 sm:space-x-3 mt-3 sm:mt-0">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowTeamId(!showTeamId)}
+                  className="flex items-center px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-full transition-all duration-200 shadow-sm"
+                >
+                  <FiCopy className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                  {showTeamId ? "Hide ID" : "Show ID"}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowNotificationsModal(true)}
+                  className="relative flex items-center px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-full transition-all duration-200 shadow-sm"
+                >
+                  <FiBell className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                  Notifications
+                  {unreadNotificationsCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs px-1 sm:px-1.5 py-0.5 rounded-full shadow-sm">
+                      {unreadNotificationsCount}
+                    </span>
+                  )}
+                </motion.button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

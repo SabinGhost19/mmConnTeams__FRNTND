@@ -20,8 +20,8 @@ import {
   RadialLinearScale,
   Filler,
 } from "chart.js";
+import { useRouter } from "next/navigation";
 
-// Register ChartJS components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -108,6 +108,7 @@ const AdminLandingPage: React.FC<AdminLandingPageProps> = () => {
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "messages" | "reactions" | "users" | "teams" | "channels"
   >("dashboard");
+  const router = useRouter();
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -276,7 +277,14 @@ const AdminLandingPage: React.FC<AdminLandingPageProps> = () => {
     }
   };
 
-  // Chart data for message statistics
+  const navigateToDashboard = () => {
+    router.push("/dashboard");
+  };
+
+  const navigateToLogin = () => {
+    router.push("/login");
+  };
+
   const messageChartData = {
     labels: [
       "Last Day",
@@ -415,13 +423,29 @@ const AdminLandingPage: React.FC<AdminLandingPageProps> = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
-      <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+      <div className="bg-white rounded-xl shadow-md p-6 mb-4">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">
           Admin Dashboard
         </h1>
         <p className="text-gray-500">
           Monitor and manage your platform's activity and users.
         </p>
+
+        <div className="flex gap-4 mt-4">
+          <button
+            onClick={navigateToLogin}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300"
+          >
+            Go to Login
+          </button>
+
+          <button
+            onClick={navigateToDashboard}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-300"
+          >
+            Go to Dashboard
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -1415,10 +1439,10 @@ const AdminLandingPage: React.FC<AdminLandingPageProps> = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                          {user.avatar ? (
+                          {user.profileImage ? (
                             <img
-                              src={user.avatar}
-                              alt={user.name}
+                              src={user.profileImage}
+                              alt={user.firstName + " " + user.lastName}
                               className="h-10 w-10 object-cover"
                             />
                           ) : (

@@ -68,9 +68,12 @@ const CalendarPage = () => {
         const eventsResponse = await api.get("/api/events-getall");
         setEvents(eventsResponse.data || []);
         console.log(
-          "!!!!!!!!!!!!!!!!!!!!!!!!!EVENTS ARE: " +
-            eventsResponse.data[0].duration
+          "Events data loaded:",
+          eventsResponse.data?.length > 0
+            ? `Found ${eventsResponse.data.length} events`
+            : "No events found"
         );
+
         // Fetch channels
         const channelsResponse = await api.get("/api/channels-getforuser");
         setChannels(channelsResponse.data || []);
@@ -648,9 +651,13 @@ const EventBadge: React.FC<{
                 {attendeesCount}
               </span>
             )}
-            {channel && (
+            {channel ? (
               <span className="text-indigo-500 text-[10px]">
                 #{channel.name}
+              </span>
+            ) : (
+              <span className="text-green-600 text-[10px] font-medium">
+                not assigned
               </span>
             )}
           </div>
@@ -681,7 +688,10 @@ const EventDetailCard: React.FC<{
     const creator = members.find((member) => member.id === event.createdBy);
 
     // Calculate end time
-    const endTime = new Date(eventDate.getTime() + event.duration * 60000);
+    const endTime =
+      event.duration !== undefined
+        ? new Date(eventDate.getTime() + event.duration * 60000)
+        : new Date(eventDate.getTime() + 60 * 60000); // Default to 1 hour if duration not specified
 
     // Find attendees
     const attendees = members.filter((member) =>
@@ -737,7 +747,13 @@ const EventDetailCard: React.FC<{
 
             <span className="text-gray-500">Durată:</span>
             <span className="text-gray-700 font-medium">
-              {event.duration} minute
+              {event.duration !== undefined ? (
+                `${event.duration} minute`
+              ) : (
+                <span className="text-green-600 font-medium">
+                  not assigned in any team or channel yet
+                </span>
+              )}
             </span>
 
             {channel && (
@@ -886,7 +902,12 @@ const EventCard = ({
     const eventDate = new Date(event.eventDate);
     const channel = channels.find((c) => c.id === event.channelId);
     const creator = members.find((member) => member.id === event.createdBy);
-    const endTime = new Date(eventDate.getTime() + event.duration * 60000);
+
+    // Calculate end time with a fallback if duration is undefined
+    const endTime =
+      event.duration !== undefined
+        ? new Date(eventDate.getTime() + event.duration * 60000)
+        : new Date(eventDate.getTime() + 60 * 60000); // Default to 1 hour if duration not specified
 
     // Find attendees based on the event.attendees array
     const attendees = members.filter((member) =>
@@ -919,7 +940,13 @@ const EventCard = ({
                   {eventDate.getMinutes().toString().padStart(2, "0")}
                 </span>
                 <span className="text-xs text-indigo-600 font-medium">
-                  {event.duration} min
+                  {event.duration !== undefined ? (
+                    `${event.duration} min`
+                  ) : (
+                    <span className="text-green-600 font-medium">
+                      not assigned
+                    </span>
+                  )}
                 </span>
               </div>
             </div>
@@ -943,11 +970,18 @@ const EventCard = ({
                   })}
                 </span>
 
-                {channel && (
+                {channel ? (
                   <>
                     <span className="text-gray-500">Canal:</span>
                     <span className="text-gray-700 font-medium">
                       #{channel.name}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-gray-500">Status:</span>
+                    <span className="text-green-600 font-medium">
+                      not assigned in any team or channel yet
                     </span>
                   </>
                 )}

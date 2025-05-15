@@ -22,24 +22,24 @@ export default function RoleBasedGuard({
 
   useEffect(() => {
     if (!isLoading) {
-      // If not authenticated, redirect to login
+      // if not authenticated, redirect to login
       if (!isAuthenticated) {
         router.push("/login");
         return;
       }
 
-      // Get user data directly from localStorage
+      // get user data directly from localStorage
       const userData = getUserData();
       const userRoles = userData?.roles || [];
 
-      // Check if user has any of the allowed roles
+      // check if user has any of the allowed roles
       const hasAllowedRole = allowedRoles.some((role) =>
         userRoles.includes(role)
       );
 
       setHasPermission(hasAllowedRole);
 
-      // If authenticated but doesn't have allowed roles, redirect to specified route
+      // if aAuthenticated but doesnt have allowed roles redirect to specified route
       if (!hasAllowedRole) {
         router.push(redirectTo);
       }
@@ -54,6 +54,6 @@ export default function RoleBasedGuard({
     );
   }
 
-  // Only render children if user has permission
+  // oonly render children if user has permission
   return hasPermission ? <>{children}</> : null;
 }

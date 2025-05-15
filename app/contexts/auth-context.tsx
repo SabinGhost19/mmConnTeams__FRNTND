@@ -1,4 +1,3 @@
-// src/contexts/auth-context.tsx
 "use client";
 
 import {
@@ -42,13 +41,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      // Facem request POST către /api/auth/logout pe serverul localhost:8080
       await api.post("/api/auth/logout");
       console.log("Logout request sent successfully");
     } catch (error) {
       console.error("Error during logout request:", error);
     } finally {
-      // Indiferent de rezultatul request-ului, ștergem datele locale și redirecționăm
       clearAuthData();
       setUser(null);
       router.push("/login");

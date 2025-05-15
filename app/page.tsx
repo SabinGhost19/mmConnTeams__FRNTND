@@ -3,24 +3,22 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
+import { FiZap, FiMessageSquare, FiShare2, FiClipboard } from "react-icons/fi";
 
 export default function Home() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      {/* Navigation */}
       <nav className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <Image
-              src="https://img.icons8.com/fluency/48/000000/microsoft-teams-2019.png"
-              alt="Logo"
-              width={32}
-              height={32}
-              className="mr-2"
-            />
-            <span className="text-xl font-bold text-blue-600">TeamSync</span>
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full p-2 mr-2">
+              <FiZap className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
+              TeamSync
+            </span>
           </div>
           <div className="hidden md:flex space-x-6">
             <Link
@@ -31,7 +29,7 @@ export default function Home() {
             </Link>
             <Link
               href="/register"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300"
+              className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-md hover:from-blue-600 hover:to-indigo-700 transition duration-300 shadow-md"
             >
               Register
             </Link>
@@ -43,7 +41,6 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Mobile menu button */}
           <div className="md:hidden">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -75,7 +72,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden mt-4 bg-white rounded-lg shadow-lg p-4">
             <div className="flex flex-col space-y-4">
@@ -102,7 +98,6 @@ export default function Home() {
         )}
       </nav>
 
-      {/* Hero Section with Background Image */}
       <div className="relative">
         <div className="absolute inset-0 z-0">
           <Image
@@ -115,85 +110,93 @@ export default function Home() {
           />
         </div>
         <div className="container relative z-10 mx-auto px-6 py-24 text-center">
-          <h1 className="text-5xl font-bold text-gray-800 mb-6">
-            Connect and Collaborate Seamlessly
-          </h1>
-          <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto">
-            A modern platform for team communication, video conferencing, and
-            more
-          </p>
-          <div className="flex justify-center space-x-4">
-            <Link
-              href="/register"
-              className="px-8 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300 shadow-md"
-            >
-              Get Started
-            </Link>
-            <Link
-              href="/learnmore"
-              className="px-8 py-3 bg-white text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 transition duration-300"
-            >
-              Learn More
-            </Link>
+          <div className="max-w-3xl mx-auto">
+            <div className="flex justify-center mb-6">
+              <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full p-3">
+                <FiZap className="w-8 h-8 text-white" />
+              </div>
+            </div>
+            <h1 className="text-5xl font-bold text-gray-800 mb-6 leading-tight">
+              Connect and Collaborate Seamlessly
+            </h1>
+            <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto">
+              A modern platform for team communication, task management, and
+              more
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <Link
+                href="/register"
+                className="px-8 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition duration-300 shadow-md"
+              >
+                Get Started
+              </Link>
+              <Link
+                href="/learnmore"
+                className="px-8 py-3 bg-white text-blue-600 border border-blue-200 rounded-xl hover:bg-blue-50 transition duration-300 shadow-sm"
+              >
+                Learn More
+              </Link>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Features Section with Images */}
       <div className="container mx-auto px-6 py-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">
+            Our Features
+          </h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Discover the powerful tools that make our platform the preferred
+            choice for teams around the world.
+          </p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="p-6 bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="h-48 mb-4 relative">
-              <Image
-                src="https://images.unsplash.com/photo-1577563908411-5077b6dc7624?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80"
-                alt="Messaging Feature"
-                fill
-                style={{ objectFit: "cover" }}
-                className="rounded-t-lg"
-              />
+          <div className="p-6 bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-all duration-300">
+            <div className="flex justify-center mb-4">
+              <div className="bg-blue-100 rounded-full p-4">
+                <FiMessageSquare className="h-8 w-8 text-blue-600" />
+              </div>
             </div>
-            <h3 className="text-xl font-semibold mb-2">Messaging</h3>
-            <p className="text-gray-600">
+            <h3 className="text-xl font-semibold mb-2 text-center">
+              Messaging
+            </h3>
+            <p className="text-gray-600 text-center">
               Connect with your team through instant messaging and group chats.
             </p>
           </div>
 
-          <div className="p-6 bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="h-48 mb-4 relative">
-              <Image
-                src="https://images.unsplash.com/photo-1609921212029-bb5a28e60960?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80"
-                alt="Video Conferencing Feature"
-                fill
-                style={{ objectFit: "cover" }}
-                className="rounded-t-lg"
-              />
+          <div className="p-6 bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-all duration-300">
+            <div className="flex justify-center mb-4">
+              <div className="bg-indigo-100 rounded-full p-4">
+                <FiClipboard className="h-8 w-8 text-indigo-600" />
+              </div>
             </div>
-            <h3 className="text-xl font-semibold mb-2">Video Conferencing</h3>
-            <p className="text-gray-600">
-              Host and join high-quality video meetings with your team from
-              anywhere.
+            <h3 className="text-xl font-semibold mb-2 text-center">
+              Ticket and Event Assignment
+            </h3>
+            <p className="text-gray-600 text-center">
+              Easily create, assign and track tickets and events for your team
+              in real-time.
             </p>
           </div>
 
-          <div className="p-6 bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="h-48 mb-4 relative">
-              <Image
-                src="https://images.unsplash.com/photo-1576669801775-ff43c5ab079d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80"
-                alt="Document Sharing Feature"
-                fill
-                style={{ objectFit: "cover" }}
-                className="rounded-t-lg"
-              />
+          <div className="p-6 bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-all duration-300">
+            <div className="flex justify-center mb-4">
+              <div className="bg-purple-100 rounded-full p-4">
+                <FiShare2 className="h-8 w-8 text-purple-600" />
+              </div>
             </div>
-            <h3 className="text-xl font-semibold mb-2">Document Sharing</h3>
-            <p className="text-gray-600">
+            <h3 className="text-xl font-semibold mb-2 text-center">
+              Document Sharing
+            </h3>
+            <p className="text-gray-600 text-center">
               Share and collaborate on documents in real-time with your team.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Testimonial Section with Image */}
       <div className="bg-gray-50 py-16">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center">
@@ -203,7 +206,7 @@ export default function Home() {
                 alt="Team Collaboration"
                 fill
                 style={{ objectFit: "cover" }}
-                className="rounded-lg shadow-lg"
+                className="rounded-xl shadow-lg"
               />
             </div>
             <div className="md:w-1/2 md:pl-10">
@@ -224,22 +227,17 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-800 text-white py-12">
+      <footer className="bg-gradient-to-r from-gray-800 to-gray-900 text-white py-12">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center mb-6 md:mb-0">
-              <Image
-                src="https://img.icons8.com/fluency/48/000000/microsoft-teams-2019.png"
-                alt="Logo"
-                width={32}
-                height={32}
-                className="mr-2"
-              />
-              <span className="text-xl font-bold text-white">MMConnSG</span>
+              <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full p-2 mr-2">
+                <FiZap className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-bold text-white">TeamSync</span>
             </div>
             <p className="text-gray-400 mb-4 md:mb-0">
-              © 2023 MMConnSG. All rights reserved.
+              © 2025 TeamSync. All rights reserved.
             </p>
             <div className="flex space-x-4">
               <Link

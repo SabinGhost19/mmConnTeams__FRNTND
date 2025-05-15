@@ -25,13 +25,12 @@ export default function RoleExclusionGuard({
 
   useEffect(() => {
     if (!isLoading) {
-      // If not authenticated, redirect to login
       if (!isAuthenticated) {
         router.push("/login");
         return;
       }
 
-      // Get user data directly from localStorage
+      // fet user data directly from localStorage
       const userData = getUserData();
       const userRoles = userData?.roles || [];
 
@@ -39,26 +38,23 @@ export default function RoleExclusionGuard({
       console.log("Excluded roles:", excludedRoles);
       console.log("Allow if has role:", allowIfHasRole);
 
-      // First check if user has any of the allowIfHasRole roles
       const hasAllowedRole = allowIfHasRole.some((role) =>
         userRoles.includes(role)
       );
 
-      // If user has an explicitly allowed role, give access regardless of excluded roles
       if (hasAllowedRole) {
         console.log("User has allowed role, giving access");
         setHasAccess(true);
         return;
       }
 
-      // Otherwise check if user has any of the excluded roles
+      // otherwise check if user has any of the excluded roles
       const hasExcludedRole = excludedRoles.some((role) =>
         userRoles.includes(role)
       );
 
       setHasAccess(!hasExcludedRole);
 
-      // If user has excluded role (and no allowed role), redirect
       if (hasExcludedRole) {
         console.log("User has excluded role, redirecting");
         router.push(redirectTo);
@@ -81,6 +77,5 @@ export default function RoleExclusionGuard({
     );
   }
 
-  // Only render children if user doesn't have excluded roles
   return hasAccess ? <>{children}</> : null;
 }
