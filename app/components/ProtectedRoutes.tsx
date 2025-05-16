@@ -21,7 +21,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        Se încarcă...
+        Loading...
       </div>
     );
   }

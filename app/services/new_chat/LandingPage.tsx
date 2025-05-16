@@ -5,7 +5,6 @@ import { getAccessToken } from "@/app/lib/auth-utils";
 import { Team, Channel, User, PrivateChat } from "./components/interface";
 import LoadingBox from "./components/LoadingBox";
 
-// Use a more NextJS friendly approach for styling
 const fadeInAnimation = `
   @keyframes fadeIn {
     from { opacity: 0; }
@@ -16,40 +15,37 @@ const fadeInAnimation = `
   }
 `;
 
-// Color scheme variables
 const colors = {
-  primary: "#0d47a1", // Darker blue
-  secondary: "#1565c0", // Secondary blue
-  light: "#bbdefb", // Light blue
-  dark: "#002171", // Very dark blue
-  hover: "#e3f2fd", // Hover light blue
-  background: "#e8f5fa", // Light blue/gray background
+  primary: "#0d47a1",
+  secondary: "#1565c0",
+  light: "#bbdefb",
+  dark: "#002171",
+  hover: "#e3f2fd",
+  background: "#e8f5fa",
   message: {
-    own: "#bbdefb", // Own message bubble (lighter blue)
-    other: "#f5f5f5", // Other message bubble (light gray)
+    own: "#bbdefb",
+    other: "#f5f5f5",
   },
 };
 
-// Function to generate a random color for team avatars
 const getRandomColor = (seed: string): string => {
   const colors = [
-    "#0d47a1", // Dark blue
-    "#1565c0", // Blue
-    "#1976d2", // Medium blue
-    "#0277bd", // Light blue
-    "#00838f", // Teal
-    "#00695c", // Dark teal
-    "#2e7d32", // Dark green
-    "#558b2f", // Green
-    "#6a1b9a", // Purple
-    "#4527a0", // Deep purple
-    "#283593", // Indigo
-    "#c62828", // Red
-    "#d84315", // Deep orange
-    "#4e342e", // Brown
+    "#0d47a1",
+    "#1565c0",
+    "#1976d2",
+    "#0277bd",
+    "#00838f",
+    "#00695c",
+    "#2e7d32",
+    "#558b2f",
+    "#6a1b9a",
+    "#4527a0",
+    "#283593",
+    "#c62828",
+    "#d84315",
+    "#4e342e",
   ];
 
-  // Use the seed string to deterministically select a color
   const hash = seed.split("").reduce((acc, char) => {
     return char.charCodeAt(0) + ((acc << 5) - acc);
   }, 0);
